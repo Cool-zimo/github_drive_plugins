@@ -8,7 +8,8 @@
       "author": "GitHub Drive",
       "version": "1.0.0",
       "icon": "📝",
-      "file": "plugins/text-editor.html"
+      "file": "plugins/text-editor.html",
+      "type": "plugin"
     },
     {
       "id": "bilibili-downloader",
@@ -17,7 +18,8 @@
       "author": "GitHub Drive",
       "version": "0.1.0",
       "icon": "📺",
-      "file": "plugins/bilibili-downloader.html"
+      "file": "plugins/bilibili-downloader.html",
+      "type": "plugin"
     },
     {
       "id": "image-viewer",
@@ -26,7 +28,18 @@
       "author": "GitHub Drive",
       "version": "1.0.0",
       "icon": "🖼️",
-      "file": "plugins/image-viewer.html"
+      "file": "plugins/image-viewer.html",
+      "type": "plugin"
+    },
+    {
+      "id": "snake",
+      "name": "🐍 贪吃蛇",
+      "description": "经典贪吃蛇游戏，最高分自动保存到 GitHub Drive",
+      "author": "GitHub Drive",
+      "version": "1.0.0",
+      "icon": "🐍",
+      "type": "game",
+      "file": "games/snake.html"
     }
   ]
 }
