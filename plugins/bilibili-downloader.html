@@ -78,17 +78,18 @@ button{padding:10px 16px;border:none;border-radius:6px;cursor:pointer;font-size:
 const GD={call(a,d={}){return new Promise((res,rej)=>{const id=Date.now()+Math.random();const h=e=>{if(e.data.type==='gd-response'&&e.data.id===id){window.removeEventListener('message',h);e.data.error?rej(new Error(e.data.error)):res(e.data.result)}};window.addEventListener('message',h);window.parent.postMessage({type:'gd-api',id,action:a,data:d},'*')})},uploadFile(n,c,p){return this.call('uploadFile',{name:n,content:c,path:p})},showToast(m,t){return this.call('showToast',{message:m,type})},getCurrentPath(){return this.call('getCurrentPath')}};
 
 const REPO='https://ghproxy.com/https://raw.githubusercontent.com/Cool-zimo/github-drive-server/main/dist';
+const BACKEND_VERSION='v2.2.0';
 
 function detectOS(){
   const ua=navigator.userAgent;
-  if(/Windows/i.test(ua)) return {name:'Windows',file:'github-drive-server-windows.exe',ext:'.exe'};
+  if(/Windows/i.test(ua)) return {name:'Windows',file:'github-drive-server-'+BACKEND_VERSION+'-windows.exe',ext:'.exe'};
   if(/Mac OS X|Macintosh/i.test(ua)){
     if(/Apple Silicon|arm64|aarch64/i.test(ua) || (navigator.platform==='MacIntel' && navigator.hardwareConcurrency>8))
-      return {name:'macOS (Apple芯片)',file:'github-drive-server-macos-apple',ext:''};
-    return {name:'macOS (Intel)',file:'github-drive-server-macos-intel',ext:''};
+      return {name:'macOS (Apple芯片)',file:'github-drive-server-'+BACKEND_VERSION+'-macos-apple',ext:''};
+    return {name:'macOS (Intel)',file:'github-drive-server-'+BACKEND_VERSION+'-macos-intel',ext:''};
   }
-  if(/Linux/i.test(ua)) return {name:'Linux',file:'github-drive-server-linux',ext:''};
-  return {name:'未知系统',file:'github-drive-server-linux',ext:''};
+  if(/Linux/i.test(ua)) return {name:'Linux',file:'github-drive-server-'+BACKEND_VERSION+'-linux',ext:''};
+  return {name:'未知系统',file:'github-drive-server-'+BACKEND_VERSION+'-linux',ext:''};
 }
 
 function downloadBackend(){
