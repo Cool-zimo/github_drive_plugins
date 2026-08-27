@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B站视频下载器</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 20px; background: #f9fafb; }
+h3 { margin-bottom: 16px; color: #111827; }
+.input-group { margin-bottom: 12px; }
+label { display: block; font-size: 13px; color: #374151; margin-bottom: 4px; }
+input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; }
+button { padding: 10px 20px; border: none; border-radius: 6px; background: #fb7299; color: #fff; cursor: pointer; font-size: 14px; }
+button:disabled { opacity: 0.5; }
+.hint { margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 6px; font-size: 12px; color: #92400e; }
+.status { margin-top: 12px; font-size: 13px; color: #6b7280; }
+</style>
+</head>
+<body>
+<h3>📺 B站视频下载器</h3>
+<div class="input-group">
+  <label>视频链接（BV号或完整URL）</label>
+  <input type="text" id="url" placeholder="https://www.bilibili.com/video/BV1xx411c7mD">
+</div>
+<div class="input-group">
+  <label>保存到路径</label>
+  <input type="text" id="path" value="/drive_home" placeholder="/drive_home">
+</div>
+<button onclick="download()">⬇️ 下载到 Drive</button>
+<div class="status" id="status"></div>
+<div class="hint">
+  ⚠️ 由于浏览器 CORS 限制，直接下载 B 站视频需要后端代理服务。<br>
+  此插件为示例框架，实际使用需部署代理服务。<br>
+  开发者可 fork 此仓库，替换为自己的代理接口。
+</div>
+<script>
+const GD = {
+  call(action, data = {}) {
+    return new Promise((resolve, reject) => {
+      const id = Date.now() + Math.random();
+      const handler = (e) => {
+        if (e.data.type === 'gd-response' && e.data.id === id) {
+          window.removeEventListener('message', handler);
+          if (e.data.error) reject(new Error(e.data.error));
+          else resolve(e.data.result);
+        }
+      };
+      window.addEventListener('message', handler);
+      window.parent.postMessage({ type: 'gd-api', id, action, data }, '*');
+    });
+  },
+  uploadFile(name, content, path) { return this.call('uploadFile', { name, content, path }); },
+  showToast(msg, type) { return this.call('showToast', { message: msg, type }); }
+};
+
+async function download() {
+  const url = document.getElementById('url').value.trim();
+  const path = document.getElementById('path').value.trim();
+  if (!url) { alert('请输入视频链接'); return; }
+  document.getElementById('status').textContent = '正在解析视频...';
+  // 示例：实际需要后端代理
+  // const videoData = await fetch(`https://your-proxy.com/api/bilibili?url=${encodeURIComponent(url)}`);
+  // const blob = await videoData.blob();
+  // await GD.uploadFile('video.mp4', blob, path);
+  document.getElementById('status').textContent = '此为示例插件，需配置后端代理后使用';
+  GD.showToast('示例插件：请配置后端代理', 'info');
+}
+</script>
+</body>
+</html>

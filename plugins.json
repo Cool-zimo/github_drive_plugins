@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "plugins": [
+    {
+      "id": "text-editor",
+      "name": "📝 文本编辑器",
+      "description": "在线编辑文本文件，支持打开、编辑、保存到 GitHub Drive",
+      "author": "GitHub Drive",
+      "version": "1.0.0",
+      "icon": "📝",
+      "file": "plugins/text-editor.html"
+    },
+    {
+      "id": "bilibili-downloader",
+      "name": "📺 B站视频下载器",
+      "description": "输入B站视频链接，下载视频到 GitHub Drive（需配合后端代理）",
+      "author": "GitHub Drive",
+      "version": "0.1.0",
+      "icon": "📺",
+      "file": "plugins/bilibili-downloader.html"
+    },
+    {
+      "id": "image-viewer",
+      "name": "🖼️ 图片查看器",
+      "description": "浏览和预览 Drive 中的图片文件，支持缩放和旋转",
+      "author": "GitHub Drive",
+      "version": "1.0.0",
+      "icon": "🖼️",
+      "file": "plugins/image-viewer.html"
+    }
+  ]
+}
