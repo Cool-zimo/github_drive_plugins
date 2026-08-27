@@ -5,129 +5,160 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>B站视频下载器</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 20px; background: #f9fafb; }
-h3 { margin-bottom: 16px; color: #111827; }
-.section { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
-.section-title { font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 10px; text-transform: uppercase; }
-.input-group { margin-bottom: 12px; }
-label { display: block; font-size: 13px; color: #374151; margin-bottom: 4px; }
-input, select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; }
-button { padding: 10px 20px; border: none; border-radius: 6px; background: #fb7299; color: #fff; cursor: pointer; font-size: 14px; }
-button.secondary { background: #6b7280; }
-.hint { margin-top: 12px; padding: 12px; background: #fef3c7; border-radius: 6px; font-size: 12px; color: #92400e; line-height: 1.5; }
-.status { margin-top: 12px; font-size: 13px; color: #6b7280; padding: 10px; background: #f3f4f6; border-radius: 6px; }
-.video-info { margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: 6px; display: none; }
-.video-info img { width: 100%; border-radius: 6px; margin-bottom: 8px; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:16px;background:#f9fafb}
+h3{margin-bottom:14px;color:#111827;font-size:16px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:12px}
+.card-title{font-size:12px;font-weight:600;color:#6b7280;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+label{display:block;font-size:12px;color:#374151;margin-bottom:4px}
+input,select{width:100%;padding:9px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:10px}
+button{padding:10px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+.btn-primary{background:#fb7299;color:#fff;width:100%}
+.btn-secondary{background:#e5e7eb;color:#374151}
+.btn-success{background:#16a34a;color:#fff}
+.status{margin-top:10px;font-size:12px;color:#6b7280;padding:8px;background:#f3f4f6;border-radius:6px;min-height:20px}
+.video-info{margin-top:10px;padding:10px;background:#f0f9ff;border-radius:6px;display:none}
+.video-info img{width:100%;border-radius:6px;margin-bottom:6px}
+.video-info h4{font-size:13px;margin-bottom:2px}
+.video-info p{font-size:11px;color:#6b7280}
+.backend-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.backend-row input{flex:1;margin-bottom:0}
+.backend-row button{flex-shrink:0;padding:9px 12px}
+.conn-ok{color:#16a34a;font-size:12px}
+.conn-fail{color:#dc2626;font-size:12px}
+.download-hint{margin-top:10px;padding:10px;background:#fef3c7;border-radius:6px;font-size:11px;color:#92400e;line-height:1.5;display:none}
+.download-hint a{color:#2563eb;text-decoration:underline}
+.step{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;font-size:11px;color:#6b7280}
+.step-num{width:18px;height:18px;border-radius:50%;background:#667eea;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
 </style>
 </head>
 <body>
 <h3>📺 B站视频下载器</h3>
-<div class="section">
-<div class="section-title">后端配置</div>
-<div class="input-group">
-<label>后端服务地址</label>
+
+<!-- 后端状态卡片 -->
+<div class="card">
+<div class="card-title">后端服务</div>
+<div class="backend-row">
 <input type="text" id="backend" value="http://localhost:8787">
+<button class="btn-secondary" onclick="testBackend()">测试</button>
 </div>
-<button class="secondary" onclick="testBackend()">🔌 测试连接</button>
-<span id="backendStatus" style="margin-left:8px;font-size:12px;"></span>
+<div id="connStatus" class="conn-fail">⚠️ 未连接</div>
+
+<div id="downloadHint" class="download-hint" style="display:block">
+<div style="font-weight:600;margin-bottom:6px;color:#92400e">需要先启动后端服务（只需一次）</div>
+<div class="step"><span class="step-num">1</span><span>点击下方按钮下载对应版本</span></div>
+<div class="step"><span class="step-num">2</span><span>下载后<strong>双击运行</strong>（会自动打开浏览器）</span></div>
+<div class="step"><span class="step-num">3</span><span>回到这里点击「测试」确认连接</span></div>
+<button class="btn-success" style="width:100%;margin-top:8px" onclick="downloadBackend()">⬇️ 下载后端服务（自动匹配系统）</button>
+<div id="backendInfo" style="margin-top:6px;font-size:10px;color:#9ca3af"></div>
 </div>
-<div class="section">
-<div class="section-title">视频下载</div>
-<div class="input-group">
-<label>视频链接（BV号或完整URL）</label>
-<input type="text" id="url" placeholder="https://www.bilibili.com/video/BV1xx411c7mD">
 </div>
-<div class="input-group">
+
+<!-- 下载卡片 -->
+<div class="card">
+<div class="card-title">视频下载</div>
+<label>视频链接（粘贴BV号或网址）</label>
+<input type="text" id="url" placeholder="https://www.bilibili.com/video/BV...">
 <label>清晰度</label>
 <select id="qn">
 <option value="16">360P</option><option value="32">480P</option>
 <option value="64" selected>720P</option><option value="80">1080P</option>
 </select>
-</div>
-<div class="input-group">
-<label>保存到 Drive 路径</label>
+<label>保存到</label>
 <input type="text" id="path" value="/drive_home">
+<button class="btn-primary" onclick="download()">⬇️ 下载到 Drive</button>
 </div>
-<button onclick="download()">⬇️ 解析并下载到 Drive</button>
-</div>
+
 <div class="video-info" id="videoInfo">
 <img id="videoPic" src=""><h4 id="videoTitle"></h4><p id="videoDesc"></p>
 </div>
 <div class="status" id="status">就绪</div>
-<div class="hint">
-💡 <b>使用前请先启动后端服务</b><br>
-1. 下载 github-drive-server 并运行<br>
-2. 点击「测试连接」确认可用<br>
-3. 仓库：<a href="https://github.com/Cool-zimo/github-drive-server" target="_blank">github-drive-server</a>
-</div>
+
 <script>
-const GD = {
-  call(action, data = {}) {
-    return new Promise((resolve, reject) => {
-      const id = Date.now() + Math.random();
-      const handler = (e) => {
-        if (e.data.type === 'gd-response' && e.data.id === id) {
-          window.removeEventListener('message', handler);
-          if (e.data.error) reject(new Error(e.data.error));
-          else resolve(e.data.result);
-        }
-      };
-      window.addEventListener('message', handler);
-      window.parent.postMessage({ type: 'gd-api', id, action, data }, '*');
-    });
-  },
-  uploadFile(name, content, path) { return this.call('uploadFile', { name, content, path }); },
-  showToast(msg, type) { return this.call('showToast', { message: msg, type }); },
-  getCurrentPath() { return this.call('getCurrentPath'); }
-};
-function getBackend() { return document.getElementById('backend').value.trim().replace(/\/$/, ''); }
-async function testBackend() {
-  const s = document.getElementById('backendStatus');
-  s.textContent = '测试中...';
-  try {
-    const d = await fetch(getBackend() + '/health').then(r => r.json());
-    s.textContent = d.status === 'running' ? '✅ 已连接 (v' + d.version + ')' : '❌ 异常';
-    s.style.color = d.status === 'running' ? '#16a34a' : '#dc2626';
-  } catch (e) { s.textContent = '❌ ' + e.message; s.style.color = '#dc2626'; }
-}
-async function download() {
-  const url = document.getElementById('url').value.trim();
-  const qn = document.getElementById('qn').value;
-  const path = document.getElementById('path').value.trim();
-  const st = document.getElementById('status');
-  if (!url) { alert('请输入视频链接'); return; }
-  st.textContent = '正在解析视频...';
-  try {
-    const data = await fetch(getBackend() + '/bilibili?url=' + encodeURIComponent(url) + '&qn=' + qn).then(r => r.json());
-    if (data.error) throw new Error(data.error);
-    document.getElementById('videoInfo').style.display = 'block';
-    document.getElementById('videoPic').src = data.pic || '';
-    document.getElementById('videoTitle').textContent = data.title || '';
-    document.getElementById('videoDesc').textContent = data.desc || '';
-    let videoUrl = '';
-    if (data.play && data.play.durl && data.play.durl.length > 0) videoUrl = data.play.durl[0].url;
-    else if (data.play && data.play.dash && data.play.dash.video) videoUrl = data.play.dash.video[0].baseUrl || data.play.dash.video[0].base_url;
-    if (!videoUrl) throw new Error('未找到视频地址（高清可能需要登录Cookie）');
-    st.textContent = '正在下载视频...';
-    const vr = await fetch(getBackend() + '/proxy?url=' + encodeURIComponent(videoUrl));
-    if (!vr.ok) throw new Error('下载失败: HTTP ' + vr.status);
-    const blob = await vr.blob();
-    st.textContent = '正在上传到 Drive...';
-    const title = (data.title || 'bilibili-video').replace(/[\\/:*?"<>|]/g, '_');
-    const ab = await blob.arrayBuffer();
-    const u8 = new Uint8Array(ab);
-    let bin = '';
-    for (let i = 0; i < u8.length; i += 8192) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
-    await GD.uploadFile(title + '.mp4', btoa(bin), path);
-    GD.showToast('下载完成: ' + title + '.mp4', 'success');
-    st.textContent = '✅ 已保存到 Drive';
-  } catch (e) {
-    st.textContent = '❌ ' + e.message;
-    GD.showToast('下载失败: ' + e.message, 'error');
+const GD={call(a,d={}){return new Promise((res,rej)=>{const id=Date.now()+Math.random();const h=e=>{if(e.data.type==='gd-response'&&e.data.id===id){window.removeEventListener('message',h);e.data.error?rej(new Error(e.data.error)):res(e.data.result)}};window.addEventListener('message',h);window.parent.postMessage({type:'gd-api',id,action:a,data:d},'*')})},uploadFile(n,c,p){return this.call('uploadFile',{name:n,content:c,path:p})},showToast(m,t){return this.call('showToast',{message:m,type})},getCurrentPath(){return this.call('getCurrentPath')}};
+
+const REPO='https://raw.githubusercontent.com/Cool-zimo/github-drive-server/main/dist';
+
+function detectOS(){
+  const ua=navigator.userAgent;
+  if(/Windows/i.test(ua)) return {name:'Windows',file:'github-drive-server-windows.exe',ext:'.exe'};
+  if(/Mac OS X|Macintosh/i.test(ua)){
+    if(/Apple Silicon|arm64|aarch64/i.test(ua) || (navigator.platform==='MacIntel' && navigator.hardwareConcurrency>8))
+      return {name:'macOS (Apple芯片)',file:'github-drive-server-macos-apple',ext:''};
+    return {name:'macOS (Intel)',file:'github-drive-server-macos-intel',ext:''};
   }
+  if(/Linux/i.test(ua)) return {name:'Linux',file:'github-drive-server-linux',ext:''};
+  return {name:'未知系统',file:'github-drive-server-linux',ext:''};
 }
-GD.getCurrentPath().then(p => { if (p) document.getElementById('path').value = p; }).catch(() => {});
+
+function downloadBackend(){
+  const os=detectOS();
+  document.getElementById('backendInfo').textContent='检测到系统：'+os.name+'，正在下载...';
+  const a=document.createElement('a');
+  a.href=REPO+'/'+os.file;
+  a.download=os.file;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>{
+    document.getElementById('backendInfo').innerHTML='下载完成后，请<strong>双击运行</strong>'+os.file+(os.ext?'.exe':'')+'，然后点击上方「测试」';
+  },2000);
+}
+
+function getBackend(){return document.getElementById('backend').value.trim().replace(/\/$/,'');}
+
+async function testBackend(){
+  const s=document.getElementById('connStatus');
+  const hint=document.getElementById('downloadHint');
+  s.textContent='测试中...';s.className='';
+  try{
+    const d=await fetch(getBackend()+'/health').then(r=>r.json());
+    if(d.status==='running'){
+      s.textContent='✅ 已连接 v'+d.version;s.className='conn-ok';
+      hint.style.display='none';
+    }else{s.textContent='❌ 服务异常';s.className='conn-fail';}
+  }catch(e){s.textContent='❌ 未连接';s.className='conn-fail';hint.style.display='block';}
+}
+
+async function download(){
+  const url=document.getElementById('url').value.trim();
+  const qn=document.getElementById('qn').value;
+  const path=document.getElementById('path').value.trim();
+  const st=document.getElementById('status');
+  if(!url){alert('请输入视频链接');return;}
+  // 先检查后端
+  try{await fetch(getBackend()+'/health');}catch(e){
+    alert('后端未连接！请先下载并启动后端服务。');return;
+  }
+  st.textContent='正在解析视频...';
+  try{
+    const data=await fetch(getBackend()+'/bilibili?url='+encodeURIComponent(url)+'&qn='+qn).then(r=>r.json());
+    if(data.error)throw new Error(data.error);
+    document.getElementById('videoInfo').style.display='block';
+    document.getElementById('videoPic').src=data.pic||'';
+    document.getElementById('videoTitle').textContent=data.title||'';
+    document.getElementById('videoDesc').textContent=data.desc||'';
+    let videoUrl='';
+    if(data.play&&data.play.durl&&data.play.durl.length>0)videoUrl=data.play.durl[0].url;
+    else if(data.play&&data.play.dash&&data.play.dash.video)videoUrl=data.play.dash.video[0].baseUrl||data.play.dash.video[0].base_url;
+    if(!videoUrl)throw new Error('未找到视频地址（高清可能需要登录Cookie）');
+    st.textContent='正在下载视频...';
+    const vr=await fetch(getBackend()+'/proxy?url='+encodeURIComponent(videoUrl));
+    if(!vr.ok)throw new Error('下载失败 HTTP '+vr.status);
+    const blob=await vr.blob();
+    st.textContent='正在上传到 Drive...';
+    const title=(data.title||'bilibili').replace(/[\\/:*?"<>|]/g,'_');
+    const ab=await blob.arrayBuffer();const u8=new Uint8Array(ab);
+    let bin='';for(let i=0;i<u8.length;i+=8192)bin+=String.fromCharCode.apply(null,u8.subarray(i,i+8192));
+    await GD.uploadFile(title+'.mp4',btoa(bin),path);
+    GD.showToast('下载完成: '+title+'.mp4','success');
+    st.textContent='✅ 已保存到 '+path+'/'+title+'.mp4';
+  }catch(e){st.textContent='❌ '+e.message;GD.showToast('失败: '+e.message,'error');}
+}
+
+GD.getCurrentPath().then(p=>{if(p)document.getElementById('path').value=p;}).catch(()=>{});
+// 自动检测后端
+setTimeout(testBackend,500);
 </script>
 </body>
 </html>
