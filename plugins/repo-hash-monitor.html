@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>仓库 Hash 监控</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f6f8fa;
+    color: #24292f;
+    padding: 16px;
+    min-height: 100vh;
+}
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+.header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.add-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.add-form input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+}
+.add-form input:focus {
+    border-color: #0969da;
+    box-shadow: 0 0 0 3px rgba(9,105,218,0.1);
+}
+.add-form button {
+    padding: 8px 16px;
+    background: #2da44e;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 500;
+}
+.add-form button:hover { background: #2c974b; }
+.repo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.repo-card {
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 14px;
+    transition: box-shadow 0.2s;
+}
+.repo-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.repo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.repo-name {
+    font-weight: 600;
+    font-size: 15px;
+    color: #0969da;
+    text-decoration: none;
+}
+.repo-name:hover { text-decoration: underline; }
+.repo-actions {
+    display: flex;
+    gap: 6px;
+}
+.icon-btn {
+    padding: 4px 8px;
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #57606a;
+}
+.icon-btn:hover { background: #f3f4f6; }
+.icon-btn.danger { color: #cf222e; }
+.icon-btn.danger:hover { background: #ffebe9; }
+.hash-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.hash-label {
+    font-size: 12px;
+    color: #57606a;
+    font-weight: 500;
+}
+.hash-value {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 13px;
+    background: #f6f8fa;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #1a7f37;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: all;
+}
+.hash-value:hover { background: #eaeef2; }
+.branch-tag {
+    font-size: 11px;
+    background: #ddf4ff;
+    color: #0969da;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+.commit-info {
+    font-size: 13px;
+    color: #57606a;
+    line-height: 1.6;
+}
+.commit-msg {
+    color: #24292f;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+.commit-meta {
+    font-size: 12px;
+    color: #8c959f;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.author-avatar {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    vertical-align: middle;
+}
+.loading {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #d0d7de;
+    border-top-color: #0969da;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.error {
+    color: #cf222e;
+    font-size: 13px;
+    padding: 8px;
+    background: #ffebe9;
+    border-radius: 4px;
+}
+.empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #8c959f;
+}
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+.auto-refresh {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #57606a;
+    margin-bottom: 12px;
+}
+.auto-refresh select {
+    padding: 4px 8px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 13px;
+}
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #24292f;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🔍 仓库 Hash 监控</h1>
+</div>
+
+<div class="auto-refresh">
+    <label>自动刷新：</label>
+    <select id="refreshInterval">
+        <option value="0">关闭</option>
+        <option value="30">30秒</option>
+        <option value="60">1分钟</option>
+        <option value="300">5分钟</option>
+        <option value="600">10分钟</option>
+    </select>
+    <span id="lastRefresh" style="margin-left:auto;font-size:12px;color:#8c959f;"></span>
+</div>
+
+<div class="add-form">
+    <input type="text" id="repoInput" placeholder="输入仓库地址，如：owner/repo 或 https://github.com/owner/repo" />
+    <button onclick="addRepo()">添加监控</button>
+</div>
+
+<div id="repoList" class="repo-list"></div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let repos = JSON.parse(localStorage.getItem('hash_monitor_repos') || '[]');
+let refreshTimer = null;
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function parseRepoInput(input) {
+    input = input.trim();
+    // 支持完整 URL
+    const urlMatch = input.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+    if (urlMatch) return { owner: urlMatch[1], repo: urlMatch[2].replace(/\.git$/, '') };
+    // 支持 owner/repo 格式
+    const parts = input.split('/');
+    if (parts.length === 2 && parts[0] && parts[1]) return { owner: parts[0], repo: parts[1] };
+    return null;
+}
+
+function addRepo() {
+    const input = document.getElementById('repoInput');
+    const parsed = parseRepoInput(input.value);
+    if (!parsed) {
+        showToast('请输入正确的仓库地址');
+        return;
+    }
+    const key = `${parsed.owner}/${parsed.repo}`;
+    if (repos.find(r => r.key === key)) {
+        showToast('该仓库已在监控列表中');
+        return;
+    }
+    repos.push({ key, owner: parsed.owner, repo: parsed.repo, data: null, loading: false, error: null });
+    saveRepos();
+    input.value = '';
+    render();
+    fetchRepo(repos.length - 1);
+}
+
+function removeRepo(index) {
+    repos.splice(index, 1);
+    saveRepos();
+    render();
+}
+
+function saveRepos() {
+    localStorage.setItem('hash_monitor_repos', JSON.stringify(repos.map(r => ({ key: r.key, owner: r.owner, repo: r.repo }))));
+}
+
+async function fetchRepo(index) {
+    const r = repos[index];
+    if (!r) return;
+    r.loading = true;
+    r.error = null;
+    render();
+    try {
+        // 获取默认分支
+        const repoResp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}`);
+        if (!repoResp.ok) throw new Error(`仓库不存在或无权限 (${repoResp.status})`);
+        const repoData = await repoResp.json();
+        const branch = repoData.default_branch;
+        
+        // 获取最新 commit
+        const commitResp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/commits/${branch}`);
+        if (!commitResp.ok) throw new Error(`获取 commit 失败 (${commitResp.status})`);
+        const commitData = await commitResp.json();
+        
+        r.data = {
+            hash: commitData.sha.substring(0, 7),
+            fullHash: commitData.sha,
+            message: commitData.commit.message.split('\n')[0],
+            author: commitData.commit.author.name,
+            authorLogin: commitData.author?.login || '',
+            authorAvatar: commitData.author?.avatar_url || '',
+            date: new Date(commitData.commit.author.date).toLocaleString('zh-CN'),
+            branch: branch,
+            verified: commitData.commit.verification?.verified || false
+        };
+        r.loading = false;
+        document.getElementById('lastRefresh').textContent = '上次刷新：' + new Date().toLocaleTimeString('zh-CN');
+    } catch (e) {
+        r.error = e.message;
+        r.loading = false;
+    }
+    render();
+}
+
+function refreshAll() {
+    repos.forEach((_, i) => fetchRepo(i));
+}
+
+function copyHash(hash) {
+    navigator.clipboard.writeText(hash).then(() => showToast('Hash 已复制：' + hash));
+}
+
+function render() {
+    const container = document.getElementById('repoList');
+    if (repos.length === 0) {
+        container.innerHTML = `
+            <div class="empty">
+                <div class="empty-icon">📦</div>
+                <p>还没有监控的仓库</p>
+                <p style="font-size:12px;margin-top:4px;">输入 owner/repo 或 GitHub 链接开始监控</p>
+            </div>`;
+        return;
+    }
+    container.innerHTML = repos.map((r, i) => {
+        if (r.loading && !r.data) {
+            return `<div class="repo-card"><div style="display:flex;align-items:center;gap:8px;"><span class="loading"></span><span style="font-size:13px;color:#57606a;">正在获取 ${r.key}...</span></div></div>`;
+        }
+        if (r.error) {
+            return `
+                <div class="repo-card">
+                    <div class="repo-header">
+                        <span class="repo-name">${r.key}</span>
+                        <div class="repo-actions">
+                            <button class="icon-btn" onclick="fetchRepo(${i})">🔄</button>
+                            <button class="icon-btn danger" onclick="removeRepo(${i})">✕</button>
+                        </div>
+                    </div>
+                    <div class="error">❌ ${r.error}</div>
+                </div>`;
+        }
+        if (!r.data) return '';
+        const d = r.data;
+        return `
+            <div class="repo-card">
+                <div class="repo-header">
+                    <a href="https://github.com/${r.key}" target="_blank" class="repo-name">${r.key}</a>
+                    <div class="repo-actions">
+                        <button class="icon-btn" onclick="fetchRepo(${i})" title="刷新">🔄</button>
+                        <button class="icon-btn danger" onclick="removeRepo(${i})" title="移除">✕</button>
+                    </div>
+                </div>
+                <div class="hash-row">
+                    <span class="hash-label">最新 Commit:</span>
+                    <span class="hash-value" onclick="copyHash('${d.fullHash}')" title="点击复制完整 hash">${d.hash}</span>
+                    <span class="branch-tag">${d.branch}</span>
+                    ${d.verified ? '<span style="font-size:11px;color:#1a7f37;">✓ 已验证</span>' : ''}
+                    ${r.loading ? '<span class="loading" style="margin-left:auto;"></span>' : ''}
+                </div>
+                <div class="commit-info">
+                    <div class="commit-msg">${escapeHtml(d.message)}</div>
+                    <div class="commit-meta">
+                        ${d.authorAvatar ? `<img src="${d.authorAvatar}" class="author-avatar" alt="">` : ''}
+                        <span>${escapeHtml(d.author)}${d.authorLogin ? ' (@' + d.authorLogin + ')' : ''}</span>
+                        <span>·</span>
+                        <span>${d.date}</span>
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 自动刷新
+document.getElementById('refreshInterval').addEventListener('change', function() {
+    const interval = parseInt(this.value);
+    if (refreshTimer) clearInterval(refreshTimer);
+    if (interval > 0) {
+        refreshTimer = setInterval(refreshAll, interval * 1000);
+        showToast(`已开启自动刷新，每 ${interval >= 60 ? interval/60 + '分钟' : interval + '秒'} 刷新一次`);
+    } else {
+        showToast('已关闭自动刷新');
+    }
+});
+
+// 回车添加
+document.getElementById('repoInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') addRepo();
+});
+
+// 初始化
+render();
+if (repos.length > 0) refreshAll();
+</script>
+
+</body>
+</html>
