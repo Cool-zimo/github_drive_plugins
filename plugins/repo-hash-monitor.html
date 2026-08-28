@@ -103,6 +103,7 @@ body {
     align-items: center;
     gap: 8px;
     margin-bottom: 8px;
+    flex-wrap: wrap;
 }
 .hash-label {
     font-size: 12px;
@@ -133,6 +134,7 @@ body {
     font-size: 13px;
     color: #57606a;
     line-height: 1.6;
+    margin-bottom: 10px;
 }
 .commit-msg {
     color: #24292f;
@@ -152,6 +154,63 @@ body {
     height: 18px;
     border-radius: 50%;
     vertical-align: middle;
+}
+/* Pages 部署状态 */
+.pages-status {
+    background: #f6f8fa;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-top: 8px;
+    font-size: 13px;
+}
+.pages-status-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+.pages-status-label {
+    font-weight: 600;
+    color: #57606a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.pages-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+.pages-badge.deployed { background: #dafbe1; color: #1a7f37; }
+.pages-badge.deploying { background: #fff8c5; color: #9a6700; }
+.pages-badge.error { background: #ffebe9; color: #cf222e; }
+.pages-badge.checking { background: #ddf4ff; color: #0969da; }
+.pages-url {
+    font-size: 11px;
+    color: #8c959f;
+    word-break: break-all;
+    margin-bottom: 4px;
+}
+.pages-version {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 12px;
+    color: #0969da;
+}
+.pages-expected {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 12px;
+}
+.pages-expected input {
+    padding: 2px 6px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 11px;
+    width: 120px;
+    font-family: monospace;
 }
 .loading {
     display: inline-block;
@@ -250,13 +309,15 @@ function showToast(msg) {
 
 function parseRepoInput(input) {
     input = input.trim();
-    // 支持完整 URL
     const urlMatch = input.match(/github\.com\/([^\/]+)\/([^\/]+)/);
     if (urlMatch) return { owner: urlMatch[1], repo: urlMatch[2].replace(/\.git$/, '') };
-    // 支持 owner/repo 格式
     const parts = input.split('/');
     if (parts.length === 2 && parts[0] && parts[1]) return { owner: parts[0], repo: parts[1] };
     return null;
+}
+
+function getDefaultPagesUrl(owner, repo) {
+    return `https://${owner}.github.io/${repo}/`;
 }
 
 function addRepo() {
@@ -271,11 +332,23 @@ function addRepo() {
         showToast('该仓库已在监控列表中');
         return;
     }
-    repos.push({ key, owner: parsed.owner, repo: parsed.repo, data: null, loading: false, error: null });
+    repos.push({
+        key,
+        owner: parsed.owner,
+        repo: parsed.repo,
+        pagesUrl: getDefaultPagesUrl(parsed.owner, parsed.repo),
+        expectedVersion: '',
+        data: null,
+        pagesData: null,
+        pagesStatus: 'idle',
+        loading: false,
+        error: null
+    });
     saveRepos();
     input.value = '';
     render();
     fetchRepo(repos.length - 1);
+    checkPages(repos.length - 1);
 }
 
 function removeRepo(index) {
@@ -285,7 +358,26 @@ function removeRepo(index) {
 }
 
 function saveRepos() {
-    localStorage.setItem('hash_monitor_repos', JSON.stringify(repos.map(r => ({ key: r.key, owner: r.owner, repo: r.repo }))));
+    localStorage.setItem('hash_monitor_repos', JSON.stringify(repos.map(r => ({
+        key: r.key, owner: r.owner, repo: r.repo,
+        pagesUrl: r.pagesUrl, expectedVersion: r.expectedVersion
+    }))));
+}
+
+function updateExpectedVersion(index, value) {
+    repos[index].expectedVersion = value;
+    saveRepos();
+    updatePagesBadge(index);
+}
+
+function editPagesUrl(index) {
+    const r = repos[index];
+    const newUrl = prompt('输入 Pages URL:', r.pagesUrl);
+    if (newUrl !== null) {
+        r.pagesUrl = newUrl;
+        saveRepos();
+        checkPages(index);
+    }
 }
 
 async function fetchRepo(index) {
@@ -295,13 +387,11 @@ async function fetchRepo(index) {
     r.error = null;
     render();
     try {
-        // 获取默认分支
         const repoResp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}`);
         if (!repoResp.ok) throw new Error(`仓库不存在或无权限 (${repoResp.status})`);
         const repoData = await repoResp.json();
         const branch = repoData.default_branch;
         
-        // 获取最新 commit
         const commitResp = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}/commits/${branch}`);
         if (!commitResp.ok) throw new Error(`获取 commit 失败 (${commitResp.status})`);
         const commitData = await commitResp.json();
@@ -326,8 +416,56 @@ async function fetchRepo(index) {
     render();
 }
 
+async function checkPages(index) {
+    const r = repos[index];
+    if (!r || !r.pagesUrl) return;
+    r.pagesStatus = 'checking';
+    render();
+    try {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 8000);
+        const resp = await fetch(r.pagesUrl + '?t=' + Date.now(), { signal: controller.signal });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const html = await resp.text();
+        // 提取版本号 v=20260828xxx
+        const versionMatch = html.match(/v=(\d{8}[a-z]?)/);
+        const version = versionMatch ? versionMatch[1] : '未知';
+        r.pagesData = {
+            version: version,
+            lastCheck: new Date().toLocaleTimeString('zh-CN'),
+            status: resp.status
+        };
+        r.pagesStatus = 'deployed';
+    } catch (e) {
+        r.pagesData = {
+            error: e.message,
+            lastCheck: new Date().toLocaleTimeString('zh-CN')
+        };
+        r.pagesStatus = 'error';
+    }
+    render();
+}
+
+function updatePagesBadge(index) {
+    const r = repos[index];
+    const badge = document.getElementById(`pages-badge-${index}`);
+    if (!badge) return;
+    let status = r.pagesStatus;
+    let text = '';
+    if (status === 'checking') { text = '🔍 检测中'; }
+    else if (status === 'error') { text = '❌ 无法访问'; }
+    else if (status === 'deployed' && r.expectedVersion) {
+        if (r.pagesData?.version === r.expectedVersion) { text = '✅ 已部署'; }
+        else { text = '⏳ 部署中'; }
+    }
+    else if (status === 'deployed') { text = '✅ 可访问'; }
+    else { text = '⏳ 未检测'; }
+    badge.textContent = text;
+    badge.className = 'pages-badge ' + (status === 'deployed' ? 'deployed' : status === 'checking' ? 'checking' : status === 'error' ? 'error' : 'deploying');
+}
+
 function refreshAll() {
-    repos.forEach((_, i) => fetchRepo(i));
+    repos.forEach((_, i) => { fetchRepo(i); checkPages(i); });
 }
 
 function copyHash(hash) {
@@ -364,12 +502,51 @@ function render() {
         }
         if (!r.data) return '';
         const d = r.data;
+        // Pages 状态
+        let pagesHtml = '';
+        if (r.pagesUrl) {
+            let pagesStatusText = '⏳ 未检测';
+            let pagesStatusClass = 'deploying';
+            if (r.pagesStatus === 'checking') { pagesStatusText = '🔍 检测中'; pagesStatusClass = 'checking'; }
+            else if (r.pagesStatus === 'error') { pagesStatusText = '❌ 无法访问'; pagesStatusClass = 'error'; }
+            else if (r.pagesStatus === 'deployed') {
+                if (r.expectedVersion && r.pagesData?.version === r.expectedVersion) {
+                    pagesStatusText = '✅ 已部署'; pagesStatusClass = 'deployed';
+                } else if (r.expectedVersion) {
+                    pagesStatusText = '⏳ 部署中'; pagesStatusClass = 'deploying';
+                } else {
+                    pagesStatusText = '✅ 可访问'; pagesStatusClass = 'deployed';
+                }
+            }
+            pagesHtml = `
+                <div class="pages-status">
+                    <div class="pages-status-header">
+                        <span class="pages-status-label">🌐 GitHub Pages</span>
+                        <span id="pages-badge-${i}" class="pages-badge ${pagesStatusClass}">${pagesStatusText}</span>
+                    </div>
+                    <div class="pages-url" onclick="editPagesUrl(${i})" style="cursor:pointer;" title="点击修改">${r.pagesUrl} ✏️</div>
+                    ${r.pagesData ? `
+                        <div style="font-size:12px;color:#57606a;">
+                            当前版本: <span class="pages-version">${r.pagesData.version || '未知'}</span>
+                            ${r.pagesData.lastCheck ? `· 检测于 ${r.pagesData.lastCheck}` : ''}
+                            ${r.pagesData.error ? `<span style="color:#cf222e;">· ${r.pagesData.error}</span>` : ''}
+                        </div>
+                        <div class="pages-expected">
+                            <span>期望版本:</span>
+                            <input type="text" value="${r.expectedVersion || ''}" placeholder="如 20260828v" 
+                                   onchange="updateExpectedVersion(${i}, this.value)" />
+                            <button class="icon-btn" onclick="checkPages(${i})" style="padding:2px 6px;">🔄</button>
+                            ${r.expectedVersion ? `<span style="font-size:11px;color:#8c959f;">推送后填入新版本号判断部署</span>` : ''}
+                        </div>
+                    ` : ''}
+                </div>`;
+        }
         return `
             <div class="repo-card">
                 <div class="repo-header">
                     <a href="https://github.com/${r.key}" target="_blank" class="repo-name">${r.key}</a>
                     <div class="repo-actions">
-                        <button class="icon-btn" onclick="fetchRepo(${i})" title="刷新">🔄</button>
+                        <button class="icon-btn" onclick="fetchRepo(${i});checkPages(${i})" title="刷新">🔄</button>
                         <button class="icon-btn danger" onclick="removeRepo(${i})" title="移除">✕</button>
                     </div>
                 </div>
@@ -389,6 +566,7 @@ function render() {
                         <span>${d.date}</span>
                     </div>
                 </div>
+                ${pagesHtml}
             </div>`;
     }).join('');
 }
@@ -399,7 +577,6 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// 自动刷新
 document.getElementById('refreshInterval').addEventListener('change', function() {
     const interval = parseInt(this.value);
     if (refreshTimer) clearInterval(refreshTimer);
@@ -411,12 +588,12 @@ document.getElementById('refreshInterval').addEventListener('change', function()
     }
 });
 
-// 回车添加
 document.getElementById('repoInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') addRepo();
 });
 
-// 初始化
+// 恢复数据时重置加载状态
+repos.forEach(r => { r.loading = false; r.pagesStatus = 'idle'; });
 render();
 if (repos.length > 0) refreshAll();
 </script>
