@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSON 格式化工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 16px; background: #f9fafb; height: 100vh; display: flex; flex-direction: column; }
+h3 { margin-bottom: 12px; color: #111827; }
+.toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+button { padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; }
+button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+button.danger { background: #ef4444; color: #fff; border-color: #ef4444; }
+button:hover { opacity: 0.9; }
+.container { flex: 1; display: flex; gap: 12px; min-height: 0; }
+.input-area, .output-area { flex: 1; display: flex; flex-direction: column; }
+label { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+textarea { flex: 1; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-family: monospace; font-size: 13px; resize: none; }
+textarea.error { border-color: #ef4444; background: #fef2f2; }
+.output-area textarea { background: #f9fafb; }
+.status { margin-top: 8px; font-size: 12px; padding: 8px 12px; border-radius: 6px; }
+.status.success { background: #d1fae5; color: #065f46; }
+.status.error { background: #fee2e2; color: #991b1b; }
+</style>
+</head>
+<body>
+<h3>🔧 JSON 格式化工具</h3>
+<div class="toolbar">
+  <button onclick="openFile()">📂 打开 JSON</button>
+  <button class="primary" onclick="formatJSON()">✨ 格式化</button>
+  <button onclick="minifyJSON()">📦 压缩</button>
+  <button onclick="validateJSON()">✅ 验证</button>
+  <button class="danger" onclick="clearAll()">🗑️ 清空</button>
+  <button onclick="copyOutput()">📋 复制结果</button>
+  <button onclick="saveToDrive()">💾 保存到 Drive</button>
+</div>
+<div class="container">
+  <div class="input-area">
+    <label>输入 JSON</label>
+    <textarea id="input" placeholder='{"name": "GitHub Drive", "version": "1.0"}'></textarea>
+  </div>
+  <div class="output-area">
+    <label>输出结果</label>
+    <textarea id="output" readonly placeholder="格式化后的 JSON 将显示在这里..."></textarea>
+  </div>
+</div>
+<div class="status" id="status">就绪</div>
+
+<script>
+const GD = {
+  call(action, data = {}) {
+    return new Promise((resolve, reject) => {
+      const id = Date.now() + Math.random();
+      const handler = (e) => {
+        if (e.data.type === 'gd-response' && e.data.id === id) {
+          window.removeEventListener('message', handler);
+          if (e.data.error) reject(new Error(e.data.error));
+          else resolve(e.data.result);
+        }
+      };
+      window.addEventListener('message', handler);
+      window.parent.postMessage({ type: 'gd-api', id, action, data }, '*');
+    });
+  },
+  listFiles(path = '/drive_home') { return this.call('listFiles', { path }); },
+  downloadFile(path) { return this.call('downloadFile', { path }); },
+  uploadFile(name, content, path = '/drive_home') { return this.call('uploadFile', { name, content, path }); },
+  showToast(msg, type = 'info') { return this.call('showToast', { message: msg, type }); },
+};
+
+function setStatus(msg, type = '') {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+
+function formatJSON() {
+  try {
+    const input = document.getElementById('input').value;
+    if (!input.trim()) { setStatus('请输入 JSON 内容', 'error'); return; }
+    const obj = JSON.parse(input);
+    const formatted = JSON.stringify(obj, null, 2);
+    document.getElementById('output').value = formatted;
+    document.getElementById('input').classList.remove('error');
+    const size = new Blob([formatted]).size;
+    setStatus(`✅ 格式化成功，大小: ${(size/1024).toFixed(2)} KB`, 'success');
+  } catch (e) {
+    document.getElementById('input').classList.add('error');
+    setStatus('❌ JSON 格式错误: ' + e.message, 'error');
+  }
+}
+
+function minifyJSON() {
+  try {
+    const input = document.getElementById('input').value || document.getElementById('output').value;
+    if (!input.trim()) { setStatus('请输入 JSON 内容', 'error'); return; }
+    const obj = JSON.parse(input);
+    const minified = JSON.stringify(obj);
+    document.getElementById('output').value = minified;
+    const size = new Blob([minified]).size;
+    setStatus(`✅ 压缩成功，大小: ${(size/1024).toFixed(2)} KB`, 'success');
+  } catch (e) {
+    setStatus('❌ JSON 格式错误: ' + e.message, 'error');
+  }
+}
+
+function validateJSON() {
+  try {
+    const input = document.getElementById('input').value;
+    if (!input.trim()) { setStatus('请输入 JSON 内容', 'error'); return; }
+    JSON.parse(input);
+    setStatus('✅ JSON 格式有效', 'success');
+  } catch (e) {
+    setStatus('❌ JSON 格式错误: ' + e.message, 'error');
+  }
+}
+
+function clearAll() {
+  document.getElementById('input').value = '';
+  document.getElementById('output').value = '';
+  document.getElementById('input').classList.remove('error');
+  setStatus('已清空');
+}
+
+function copyOutput() {
+  const output = document.getElementById('output');
+  if (!output.value) { setStatus('没有可复制的内容', 'error'); return; }
+  output.select();
+  document.execCommand('copy');
+  setStatus('✅ 已复制到剪贴板', 'success');
+}
+
+async function openFile() {
+  try {
+    const files = await GD.listFiles();
+    const jsonFiles = files.filter(f => f.name && f.name.endsWith('.json'));
+    if (jsonFiles.length === 0) { GD.showToast('没有找到 JSON 文件', 'warning'); return; }
+    const names = jsonFiles.map((f, i) => `${i+1}. ${f.name}`).join('\n');
+    const idx = prompt('选择要打开的文件:\n' + names, '1');
+    if (!idx) return;
+    const file = jsonFiles[parseInt(idx) - 1];
+    const content = await GD.downloadFile(file.path);
+    document.getElementById('input').value = content;
+    setStatus('已打开: ' + file.name);
+    GD.showToast('文件已打开', 'success');
+  } catch (e) { GD.showToast('打开失败: ' + e.message, 'error'); }
+}
+
+async function saveToDrive() {
+  try {
+    const content = document.getElementById('output').value;
+    if (!content) { setStatus('没有可保存的内容', 'error'); return; }
+    const name = prompt('输入文件名:', 'formatted.json');
+    if (!name) return;
+    await GD.uploadFile(name, content);
+    setStatus('✅ 已保存到 Drive: ' + name, 'success');
+    GD.showToast('保存成功', 'success');
+  } catch (e) { GD.showToast('保存失败: ' + e.message, 'error'); }
+}
+</script>
+</body>
+</html>

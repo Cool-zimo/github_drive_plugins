@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音乐播放器</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100vh; display: flex; flex-direction: column; color: #fff; }
+h3 { margin-bottom: 16px; }
+.player { background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 16px; padding: 24px; flex: 1; display: flex; flex-direction: column; }
+.now-playing { text-align: center; margin-bottom: 24px; }
+.album-art { width: 200px; height: 200px; background: rgba(255,255,255,0.2); border-radius: 16px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 80px; }
+.track-name { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.track-artist { font-size: 14px; opacity: 0.8; }
+.progress { margin: 20px 0; }
+.progress-bar { height: 6px; background: rgba(255,255,255,0.3); border-radius: 3px; cursor: pointer; }
+.progress-fill { height: 100%; background: #fff; border-radius: 3px; width: 0%; transition: width 0.1s; }
+.time { display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; opacity: 0.8; }
+.controls { display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 20px; }
+.controls button { width: 50px; height: 50px; border-radius: 50%; border: none; background: rgba(255,255,255,0.2); color: #fff; font-size: 20px; cursor: pointer; transition: all 0.2s; }
+.controls button:hover { background: rgba(255,255,255,0.3); transform: scale(1.1); }
+.controls button.play { width: 60px; height: 60px; background: #fff; color: #667eea; font-size: 24px; }
+.playlist { flex: 1; overflow-y: auto; background: rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; }
+.playlist-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s; }
+.playlist-item:hover { background: rgba(255,255,255,0.15); }
+.playlist-item.active { background: rgba(255,255,255,0.25); }
+.playlist-item .icon { font-size: 20px; }
+.playlist-item .info { flex: 1; }
+.playlist-item .name { font-size: 14px; font-weight: 500; }
+.playlist-item .size { font-size: 11px; opacity: 0.7; }
+.toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
+.toolbar button { padding: 8px 14px; border: none; border-radius: 8px; background: rgba(255,255,255,0.2); color: #fff; cursor: pointer; font-size: 13px; }
+.toolbar button:hover { background: rgba(255,255,255,0.3); }
+</style>
+</head>
+<body>
+<h3>🎵 音乐播放器</h3>
+<div class="toolbar">
+  <button onclick="loadMusic()">📂 从 Drive 加载音乐</button>
+</div>
+<div class="player">
+  <div class="now-playing">
+    <div class="album-art" id="albumArt">🎵</div>
+    <div class="track-name" id="trackName">未选择音乐</div>
+    <div class="track-artist" id="trackArtist">GitHub Drive Music</div>
+  </div>
+  <div class="progress">
+    <div class="progress-bar" onclick="seek(event)">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="time">
+      <span id="currentTime">0:00</span>
+      <span id="totalTime">0:00</span>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="prevTrack()">⏮️</button>
+    <button class="play" onclick="togglePlay()" id="playBtn">▶️</button>
+    <button onclick="nextTrack()">⏭️</button>
+  </div>
+  <div class="playlist" id="playlist"></div>
+</div>
+<audio id="audio"></audio>
+
+<script>
+const GD = {
+  call(action, data = {}) {
+    return new Promise((resolve, reject) => {
+      const id = Date.now() + Math.random();
+      const handler = (e) => {
+        if (e.data.type === 'gd-response' && e.data.id === id) {
+          window.removeEventListener('message', handler);
+          if (e.data.error) reject(new Error(e.data.error));
+          else resolve(e.data.result);
+        }
+      };
+      window.addEventListener('message', handler);
+      window.parent.postMessage({ type: 'gd-api', id, action, data }, '*');
+    });
+  },
+  listFiles(path = '/drive_home') { return this.call('listFiles', { path }); },
+  downloadFile(path) { return this.call('downloadFile', { path }); },
+  showToast(msg, type = 'info') { return this.call('showToast', { message: msg, type }); },
+};
+
+let playlist = [];
+let currentIndex = -1;
+let audio = document.getElementById('audio');
+
+async function loadMusic() {
+  try {
+    const files = await GD.listFiles();
+    const audioFiles = files.filter(f => f.name && /\.(mp3|wav|ogg|m4a|flac)$/i.test(f.name));
+    if (audioFiles.length === 0) { GD.showToast('没有找到音频文件', 'warning'); return; }
+    playlist = audioFiles;
+    renderPlaylist();
+    GD.showToast(`已加载 ${audioFiles.length} 首音乐`, 'success');
+  } catch (e) { GD.showToast('加载失败: ' + e.message, 'error'); }
+}
+
+function renderPlaylist() {
+  const el = document.getElementById('playlist');
+  el.innerHTML = playlist.map((f, i) => `
+    <div class="playlist-item ${i === currentIndex ? 'active' : ''}" onclick="playTrack(${i})">
+      <span class="icon">🎵</span>
+      <div class="info">
+        <div class="name">${f.name}</div>
+        <div class="size">${(f.size/1024/1024).toFixed(2)} MB</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function playTrack(index) {
+  try {
+    currentIndex = index;
+    const file = playlist[index];
+    document.getElementById('trackName').textContent = file.name;
+    document.getElementById('trackArtist').textContent = 'GitHub Drive';
+    renderPlaylist();
+    
+    const blob = await GD.downloadFile(file.path);
+    const url = URL.createObjectURL(blob);
+    audio.src = url;
+    audio.play();
+    document.getElementById('playBtn').textContent = '⏸️';
+  } catch (e) { GD.showToast('播放失败: ' + e.message, 'error'); }
+}
+
+function togglePlay() {
+  if (audio.paused) { audio.play(); document.getElementById('playBtn').textContent = '⏸️'; }
+  else { audio.pause(); document.getElementById('playBtn').textContent = '▶️'; }
+}
+
+function prevTrack() { if (currentIndex > 0) playTrack(currentIndex - 1); }
+function nextTrack() { if (currentIndex < playlist.length - 1) playTrack(currentIndex + 1); }
+
+function seek(e) {
+  const rect = e.target.getBoundingClientRect();
+  const percent = (e.clientX - rect.left) / rect.width;
+  audio.currentTime = percent * audio.duration;
+}
+
+audio.addEventListener('timeupdate', () => {
+  const percent = (audio.currentTime / audio.duration) * 100;
+  document.getElementById('progressFill').style.width = percent + '%';
+  document.getElementById('currentTime').textContent = formatTime(audio.currentTime);
+});
+
+audio.addEventListener('loadedmetadata', () => {
+  document.getElementById('totalTime').textContent = formatTime(audio.duration);
+});
+
+audio.addEventListener('ended', () => nextTrack());
+
+function formatTime(sec) {
+  if (isNaN(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+</script>
+</body>
+</html>

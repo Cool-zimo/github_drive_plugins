@@ -50,6 +50,46 @@
       "icon": "🔍",
       "file": "plugins/repo-hash-monitor.html",
       "type": "plugin"
+    },
+    {
+      "id": "markdown-preview",
+      "name": "📝 Markdown 预览器",
+      "description": "实时预览 Markdown 文件，支持编辑和保存到 GitHub Drive",
+      "author": "GitHub Drive",
+      "version": "1.0.0",
+      "icon": "📝",
+      "file": "plugins/markdown-preview.html",
+      "type": "plugin"
+    },
+    {
+      "id": "json-formatter",
+      "name": "🔧 JSON 格式化工具",
+      "description": "格式化、压缩、验证 JSON 文件，支持从 Drive 打开和保存",
+      "author": "GitHub Drive",
+      "version": "1.0.0",
+      "icon": "🔧",
+      "file": "plugins/json-formatter.html",
+      "type": "plugin"
+    },
+    {
+      "id": "music-player",
+      "name": "🎵 音乐播放器",
+      "description": "播放 Drive 中的音频文件，支持播放列表、上一首/下一首、进度条",
+      "author": "GitHub Drive",
+      "version": "1.0.0",
+      "icon": "🎵",
+      "file": "plugins/music-player.html",
+      "type": "plugin"
+    },
+    {
+      "id": "code-editor",
+      "name": "💻 代码编辑器",
+      "description": "深色主题代码编辑器，支持行号、多语言、Tab 缩进、JSON 格式化",
+      "author": "GitHub Drive",
+      "version": "1.0.0",
+      "icon": "💻",
+      "file": "plugins/code-editor.html",
+      "type": "plugin"
     }
   ]
 }

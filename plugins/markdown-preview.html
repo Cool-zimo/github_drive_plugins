@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown 预览器</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 16px; background: #f9fafb; height: 100vh; display: flex; flex-direction: column; }
+h3 { margin-bottom: 12px; color: #111827; }
+.toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+button { padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; }
+button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+button:hover { opacity: 0.9; }
+.container { flex: 1; display: flex; gap: 12px; min-height: 0; }
+.editor, .preview { flex: 1; display: flex; flex-direction: column; }
+.editor textarea { flex: 1; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-family: monospace; font-size: 13px; resize: none; }
+.preview .content { flex: 1; padding: 20px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; overflow-y: auto; }
+.preview h1, .preview h2, .preview h3 { margin: 16px 0 8px; }
+.preview p { margin: 8px 0; line-height: 1.6; }
+.preview code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+.preview pre { background: #1f2937; color: #f9fafb; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 12px 0; }
+.preview pre code { background: none; padding: 0; }
+.preview blockquote { border-left: 4px solid #2563eb; padding-left: 16px; margin: 12px 0; color: #6b7280; }
+.preview table { border-collapse: collapse; margin: 12px 0; }
+.preview th, .preview td { border: 1px solid #d1d5db; padding: 8px 12px; }
+.preview th { background: #f3f4f6; }
+.status { margin-top: 8px; font-size: 12px; color: #6b7280; }
+</style>
+</head>
+<body>
+<h3>📝 Markdown 预览器</h3>
+<div class="toolbar">
+  <button onclick="openFile()">📂 打开 MD 文件</button>
+  <button class="primary" onclick="saveFile()">💾 保存</button>
+  <button onclick="togglePreview()">👁️ 切换预览</button>
+</div>
+<div class="container" id="container">
+  <div class="editor">
+    <textarea id="editor" placeholder="在此输入 Markdown 内容，或点击"打开 MD 文件"..." oninput="renderPreview()"></textarea>
+  </div>
+  <div class="preview">
+    <div class="content" id="preview"></div>
+  </div>
+</div>
+<div class="status" id="status">就绪</div>
+
+<script>
+const GD = {
+  call(action, data = {}) {
+    return new Promise((resolve, reject) => {
+      const id = Date.now() + Math.random();
+      const handler = (e) => {
+        if (e.data.type === 'gd-response' && e.data.id === id) {
+          window.removeEventListener('message', handler);
+          if (e.data.error) reject(new Error(e.data.error));
+          else resolve(e.data.result);
+        }
+      };
+      window.addEventListener('message', handler);
+      window.parent.postMessage({ type: 'gd-api', id, action, data }, '*');
+    });
+  },
+  listFiles(path = '/drive_home') { return this.call('listFiles', { path }); },
+  downloadFile(path) { return this.call('downloadFile', { path }); },
+  uploadFile(name, content, path = '/drive_home') { return this.call('uploadFile', { name, content, path }); },
+  showToast(msg, type = 'info') { return this.call('showToast', { message: msg, type }); },
+};
+
+let currentFile = null;
+let showPreview = true;
+
+function simpleMarkdown(md) {
+  return md
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    .replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>')
+    .replace(/^\- (.*$)/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<[hulo<p])(.*)$/gm, '<p>$1</p>');
+}
+
+function renderPreview() {
+  if (!showPreview) return;
+  const md = document.getElementById('editor').value;
+  document.getElementById('preview').innerHTML = simpleMarkdown(md);
+}
+
+function togglePreview() {
+  showPreview = !showPreview;
+  document.querySelector('.preview').style.display = showPreview ? 'flex' : 'none';
+  document.querySelector('.editor').style.flex = showPreview ? '1' : '2';
+}
+
+async function openFile() {
+  try {
+    const files = await GD.listFiles();
+    const mdFiles = files.filter(f => f.name && f.name.endsWith('.md'));
+    if (mdFiles.length === 0) { GD.showToast('没有找到 Markdown 文件', 'warning'); return; }
+    const names = mdFiles.map((f, i) => `${i+1}. ${f.name}`).join('\n');
+    const idx = prompt('选择要打开的文件:\n' + names, '1');
+    if (!idx) return;
+    const file = mdFiles[parseInt(idx) - 1];
+    const content = await GD.downloadFile(file.path);
+    document.getElementById('editor').value = content;
+    currentFile = file;
+    renderPreview();
+    document.getElementById('status').textContent = '已打开: ' + file.name;
+    GD.showToast('文件已打开', 'success');
+  } catch (e) { GD.showToast('打开失败: ' + e.message, 'error'); }
+}
+
+async function saveFile() {
+  try {
+    const content = document.getElementById('editor').value;
+    if (currentFile) {
+      await GD.uploadFile(currentFile.name, content);
+    } else {
+      const name = prompt('输入文件名:', 'untitled.md');
+      if (!name) return;
+      await GD.uploadFile(name, content);
+      currentFile = { name };
+    }
+    document.getElementById('status').textContent = '已保存: ' + currentFile.name;
+    GD.showToast('保存成功', 'success');
+  } catch (e) { GD.showToast('保存失败: ' + e.message, 'error'); }
+}
+
+renderPreview();
+</script>
+</body>
+</html>
