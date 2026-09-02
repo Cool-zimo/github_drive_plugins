@@ -90,6 +90,16 @@
       "icon": "💻",
       "file": "plugins/code-editor.html",
       "type": "plugin"
+    },
+    {
+      "id": "math-practice",
+      "name": "🧮 数学题库",
+      "description": "乘法/分数/幂运算练习，计时统计，历史记录同步到 Drive",
+      "author": "GitHub Drive",
+      "version": "1.0.0",
+      "icon": "🧮",
+      "file": "plugins/math-practice.html",
+      "type": "plugin"
     }
   ]
 }
