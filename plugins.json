@@ -100,6 +100,17 @@
       "icon": "🧮",
       "file": "plugins/math-practice.html",
       "type": "plugin"
+    },
+    {
+      "id": "xiudao",
+      "name": "🌿 修仙模拟器",
+      "description": "纯前端文字修仙游戏，支持云存档同步到 GitHub Drive，多职业多阵营多天赋",
+      "author": "Cool-zimo",
+      "version": "1.0.0",
+      "icon": "🌿",
+      "type": "game",
+      "externalUrl": "https://cool-zimo.github.io/xiudao/",
+      "fullscreen": true
     }
   ]
 }
