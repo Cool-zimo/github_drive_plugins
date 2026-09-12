@@ -111,6 +111,22 @@
       "type": "game",
       "externalUrl": "https://cool-zimo.github.io/xiudao/",
       "fullscreen": true
+    },
+    {
+      "id": "cangshu-link",
+      "name": "🐹 仓鼠联动",
+      "description": "在 GitHub Drive 里直接管理「仓鼠」的仓库清单：查看 Pages 状态、增删仓库、带上下文跳转",
+      "author": "Cool-zimo",
+      "version": "1.0.0",
+      "type": "tool",
+      "file": "plugins/cangshu-link.html",
+      "icon": "🐹",
+      "tags": [
+        "仓鼠",
+        "联动",
+        "仓库管理"
+      ]
     }
-  ]
+  ],
+  "updatedAt": "2026-09-12T06:43:53.638070Z"
 }
