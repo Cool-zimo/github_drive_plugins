@@ -323,6 +323,27 @@ function call(action, data = {}) {
                 return;
             }
 
+            // 令牌真实身份与本地存的账号不一致 ——
+            // 这是"读不到配置、创建却说已存在"最常见的根因：
+            // 用 A 的令牌去查 B 名下的仓库，当然查不到。
+            // 宿主已按令牌真实身份自动修正，这里明确告知用户。
+            if (st && st.mismatch) {
+                msg(`账号信息已自动修正：本地记录为 ${st.cachedLogin}，`
+                    + `但当前令牌实际属于 ${st.tokenOwner}。\n`
+                    + `已按 ${st.tokenOwner} 重新读取配置。`, 'info');
+            }
+
+            // 令牌真实身份与本地存的账号不一致 ——
+            // 这正是"读不到配置、创建却说已存在"的根因：
+            // 用 A 的令牌去查 B 名下的私仓 → 404 判"没装"；
+            // 创建时又是在 A 名下建 → 422 "已存在"。
+            // 宿主已按令牌真实身份修正，这里明确告知。
+            if (st && st.mismatch) {
+                msg(`账号信息不一致，已自动修正：\n`
+                    + `本地记录 ${st.cachedLogin}，但令牌实际属于 ${st.tokenOwner}。\n`
+                    + `已按 ${st.tokenOwner} 重新读取。`, 'info');
+            }
+
             const dot = $('dot');
             if (st && st.exists) {
                 dot.className = 'dot on';
