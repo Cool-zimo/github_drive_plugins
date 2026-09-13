@@ -152,11 +152,22 @@
             font-size: 12px;
             margin-bottom: 12px;
             display: none;
+            /* 错误信息是多行的（含"解决办法"），必须保留换行 */
+            white-space: pre-line;
+            line-height: 1.6;
+            word-break: break-word;
         }
         .msg.show { display: block; }
         .msg.ok { background: #dafbe1; color: var(--ok); }
         .msg.err { background: #ffebe9; color: var(--err); }
         .msg.info { background: #ddf4ff; color: var(--accent); }
+        /* 失败信息要留给用户读完，别几秒就消失 */
+        .msg.err.show { position: relative; padding-right: 26px; }
+        .msg-close {
+            position: absolute; top: 6px; right: 8px;
+            cursor: pointer; opacity: .55; font-size: 14px; line-height: 1;
+        }
+        .msg-close:hover { opacity: 1; }
 
         code {
             background: var(--bg-sub);
@@ -273,7 +284,17 @@ function call(action, data = {}) {
             const el = $('msg');
             el.textContent = text;
             el.className = 'msg show ' + kind;
-            if (kind === 'ok') setTimeout(() => el.className = 'msg', 2600);
+            // 成功提示自动消失；错误提示必须留着 —— 多行"解决办法"
+            // 需要时间读，几秒就消失等于没给。
+            if (kind === 'ok') {
+                setTimeout(() => el.className = 'msg', 2600);
+            } else if (kind === 'err') {
+                const x = document.createElement('span');
+                x.className = 'msg-close';
+                x.textContent = '×';
+                x.onclick = () => { el.className = 'msg'; };
+                el.appendChild(x);
+            }
         }
 
         const fmtSize = (kb) => {
@@ -392,7 +413,12 @@ function call(action, data = {}) {
                 const r = await call('cangshu.ensureConfig');
                 msg(r.created ? '配置仓库已创建' : '配置仓库已存在', 'ok');
                 await refresh();
-            } catch (e) { msg('失败: ' + e.message, 'err'); }
+            } catch (e) {
+                // 宿主已经把 GitHub 的原始错误翻译成了可操作的建议
+                // （比如"仓库已存在但令牌看不到"），这里原样展示即可，
+                // 不要再用"失败: xxx"包一层把换行和建议挤掉。
+                msg(e.message, 'err');
+            }
         }
 
         async function loadList() {
