@@ -99,6 +99,8 @@
         }
         .dot.on { background: var(--ok); box-shadow: 0 0 0 3px rgba(26,127,55,.16); }
         .dot.off { background: var(--warn); box-shadow: 0 0 0 3px rgba(188,76,0,.16); }
+        /* 登错账号：不是错误，是需要操作，用蓝色区分于红色警告 */
+        .dot.warn { background: #0969da; box-shadow: 0 0 0 3px rgba(9,105,218,.16); }
 
         .status-txt { flex: 1; }
         .status-txt b { font-weight: 600; }
@@ -305,28 +307,83 @@ function call(action, data = {}) {
                 dot.className = 'dot on';
                 $('st-title').textContent = `已连接 · ${st.count} 个仓库`;
                 $('st-desc').textContent =
-                    `配置仓库 ${st.configRepo}` + (st.tokenShared ? ' · 令牌已共享（免登录跳转）' : '');
+                    `账号 ${st.owner} · 配置仓库 ${st.configRepo}`
+                    + (st.tokenShared ? ' · 令牌已共享（免登录跳转）' : '');
                 await loadList();          // 只有配置存在才加载列表
-            } else if (st && st.installed) {
+                return;
+            }
+
+            // 配置不在这个账号下 —— 这是最常见的"明明装了却找不到"的原因。
+            // 配置仓库是账号私有的，登错账号就必然 404。
+            if (st && st.configOwner && st.configOwner !== st.owner) {
+                dot.className = 'dot warn';
+                $('st-title').textContent = '登错账号了';
+                $('st-desc').textContent =
+                    `当前登录 ${st.owner}，但 cangshu-config 在 ${st.configOwner} 账号下`;
+                showWrongAccount(st.owner, st.configOwner);
+                return;
+            }
+
+            if (st && st.installed) {
                 dot.className = 'dot off';
                 $('st-title').textContent = '仓鼠已安装，但还没有配置';
-                $('st-desc').textContent = '点下面的按钮创建配置仓库';
-                showInit();
+                $('st-desc').textContent = `账号 ${st.owner} · 点下面的按钮创建配置仓库`;
+                showInit(st.owner);
             } else {
                 dot.className = 'dot off';
                 $('st-title').textContent = '未检测到仓鼠';
-                $('st-desc').textContent = '还没有 cangshu-config 仓库';
-                showInit();
+                $('st-desc').textContent = `账号 ${st.owner} 下没有 cangshu-config 仓库`;
+                showInit(st.owner);
             }
         }
 
-        function showInit() {
+        /**
+         * 初始化引导页
+         * 明确写出"配置会建在哪个账号下"，
+         * 免得用户建完发现建在了别的账号里。
+         */
+        function showInit(owner) {
             $('list').innerHTML = `
                 <div class="empty">
                     <div class="ico">🐹</div>
                     <div>还没有配置仓库</div>
+                    ${owner ? `<div style="font-size:12px;color:var(--text-sub);margin-top:4px">将创建在 <b>${esc(owner)}</b> 账号下</div>` : ''}
                     <button class="primary" style="margin-top:12px" onclick="initConfig()">初始化配置</button>
                 </div>`;
+        }
+
+        /**
+         * 账号不匹配的引导页
+         *
+         * 之前这里只显示"还没有配置仓库"，用户看到会以为仓鼠没装，
+         * 但实际只是 Drive 登录的账号和仓鼠的不是一个。
+         * 现在明确告诉用户配置在哪个账号下，并把解决办法写清楚。
+         */
+        function showWrongAccount(current, target) {
+            $('list').innerHTML = `
+                <div class="empty">
+                    <div class="ico">🔀</div>
+                    <div style="font-weight:600;margin-bottom:6px">配置在另一个账号下</div>
+                    <div style="font-size:12px;line-height:1.7;text-align:left;max-width:340px">
+                        <div>当前 Drive 登录：<b>${esc(current)}</b></div>
+                        <div>配置仓库所在：<b>${esc(target)}</b></div>
+                        <div style="margin-top:10px;color:var(--text-sub)">
+                            cangshu-config 是<b>私有仓库、按账号隔离</b>的，
+                            所以在 ${esc(current)} 下找不到 ${esc(target)} 的配置，这是正常的。
+                        </div>
+                        <div style="margin-top:10px">
+                            <b>解决办法：</b><br>
+                            1. 点左下角头像 → 切换账号 → 选 <b>${esc(target)}</b><br>
+                            2. 或直接用 ${esc(target)} 的令牌重新登录
+                        </div>
+                    </div>
+                    <button class="primary" style="margin-top:14px"
+                            onclick="openCangshu()">去仓鼠应用查看</button>
+                </div>`;
+        }
+
+        function openCangshu() {
+            try { call('cangshu.open', {}); } catch (e) {}
         }
 
         async function initConfig() {
