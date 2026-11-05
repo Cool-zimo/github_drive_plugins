@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>⌘ 命令中心</title><style>
+:root{--bg:#fff;--fg:#1f2328;--mut:#656d76;--line:#d0d7de;--soft:#f6f8fa;--acc:#0969da;--pur:#8250df}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#c9d1d9;--mut:#8b949e;--line:#30363d;--soft:#161b22;--acc:#58a6ff;--pur:#bc8cff}}
+*{box-sizing:border-box}body{margin:0;padding:14px;font:13px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--fg)}
+h1{font-size:16px;margin:0 0 4px}h2{font-size:13px;margin:16px 0 8px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+p{color:var(--mut);margin:6px 0 10px}small{color:var(--mut);font-size:11px}
+button{font:12px system-ui;padding:7px 11px;border:1px solid var(--line);border-radius:7px;background:var(--soft);color:var(--fg);cursor:pointer;margin:3px 4px 3px 0}
+button:hover{border-color:var(--acc);color:var(--acc)}button.pri{background:var(--acc);border-color:var(--acc);color:#fff}button.pri:hover{filter:brightness(1.1);color:#fff}
+input,textarea,select{font:12px/1.5 ui-monospace,monospace;width:100%;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg)}
+textarea{min-height:120px;resize:vertical}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.card{border:1px solid var(--line);border-radius:9px;padding:10px;margin:8px 0;background:var(--soft)}
+.card b{font-size:12px}.tag{display:inline-block;padding:1px 7px;border-radius:9px;background:var(--bg);border:1px solid var(--line);font-size:10px;color:var(--mut);margin-right:4px}
+pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px;font:11px/1.5 ui-monospace,monospace;max-height:260px;overflow:auto}
+.ok{color:#1a7f37}.bad{color:#cf222e}.mono{font-family:ui-monospace,monospace;font-size:11px}
+.hint{border-left:3px solid var(--pur);padding:6px 10px;background:var(--soft);color:var(--mut);font-size:11px;margin:10px 0}
+</style></head>
+<body>
+<h1>⌘ 命令中心</h1>
+
+<p>演示扩展如何往宿主里「长」进去：注册命令、注入右键菜单、开多个窗口、弹独立标签。</p>
+<div class="row"><button class="pri" id="pal">⌘ 打开命令面板</button>
+<button id="info">ℹ 宿主信息</button><button id="win">▢ 开子窗口</button><button id="pop">⇱ 弹独立标签</button></div>
+<div class="card" id="out"><b>输出</b><pre id="log">—</pre></div>
+<h2>已注册命令</h2><div id="cmds" class="mono">—</div>
+<div class="hint">按 Ctrl+Shift+P 也能打开命令面板；在文件上右键能看到这里注入的菜单项。</div>
+
+<script>
+function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+function log(x){document.getElementById('log').textContent=typeof x==='string'?x:JSON.stringify(x,null,2);}
+GD.ready.then(function(){
+  GD.commands.register('cc.info','命令中心：查看宿主信息',function(){ return GD.host.info().then(function(i){log(i);return i;}); });
+  GD.commands.register('cc.window','命令中心：开一个子窗口',function(){ return newWindow(); });
+  GD.commands.register('cc.menuFile','命令中心：查看选中文件',function(){
+    return GD.selection.get().then(function(a){ log(a); return a; }); });
+  GD.menus.contribute('file',[
+    {command:'cc.menuFile',label:'显示文件信息',icon:'ℹ'},
+    {command:'cc.window',label:'在子窗口里看',icon:'▢'}
+  ]);
+  GD.commands.list().then(function(c){document.getElementById('cmds').innerHTML=c.map(function(x){return '<div class="card"><b>'+e(x.title)+'</b> <span class="tag">'+e(x.source)+'</span><br><small>'+e(x.id)+'</small></div>';}).join('');});
+  GD.status.set('⌘ 3 个命令');
+});
+function newWindow(){
+  return GD.window.open({title:'▢ 子窗口',icon:'▢',html:'<!DOCTYPE html><html lang="zh-CN"><meta charset="utf-8"><style>body{font:14px system-ui;padding:24px;background:#f6f8fa}button{padding:8px 14px}</style><h2>独立的扩展子窗口</h2><p>它和主窗口共享同一个扩展身份与权限。</p><div id="x"></div><script>GD.ready.then(function(){GD.host.info().then(function(i){document.getElementById("x").textContent="extId="+i.extId+" / API v"+i.apiVersion;});});<\/script></html>'});
+}
+document.getElementById('pal').onclick=function(){GD.commands.execute('ext.palette').catch(function(e){log(e.message);});};
+document.getElementById('info').onclick=function(){GD.host.info().then(log).catch(function(e){log(e.message);});};
+document.getElementById('win').onclick=function(){newWindow().then(function(){log('子窗口已打开');}).catch(function(e){log(e.message);});};
+document.getElementById('pop').onclick=function(){GD.window.popout({title:'⌘ 独立标签',html:'<!DOCTYPE html><html><meta charset="utf-8"><style>body{font:16px system-ui;padding:40px;background:#0d1117;color:#c9d1d9}</style><h2>独立标签页</h2><p>扩展代码跑在 opaque sandbox iframe 里，但消息照样通。</p><script>GD.ready.then(function(){GD.ui.toast("独立标签已连上宿主","success");});<\/script></html>'}).then(function(){log('已弹出');}).catch(function(e){log(e.message);});};
+
+</script></body></html>

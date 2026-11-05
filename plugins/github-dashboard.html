@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🐙 GitHub 仪表盘</title><style>
+:root{--bg:#fff;--fg:#1f2328;--mut:#656d76;--line:#d0d7de;--soft:#f6f8fa;--acc:#0969da;--pur:#8250df}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#c9d1d9;--mut:#8b949e;--line:#30363d;--soft:#161b22;--acc:#58a6ff;--pur:#bc8cff}}
+*{box-sizing:border-box}body{margin:0;padding:14px;font:13px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--fg)}
+h1{font-size:16px;margin:0 0 4px}h2{font-size:13px;margin:16px 0 8px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+p{color:var(--mut);margin:6px 0 10px}small{color:var(--mut);font-size:11px}
+button{font:12px system-ui;padding:7px 11px;border:1px solid var(--line);border-radius:7px;background:var(--soft);color:var(--fg);cursor:pointer;margin:3px 4px 3px 0}
+button:hover{border-color:var(--acc);color:var(--acc)}button.pri{background:var(--acc);border-color:var(--acc);color:#fff}button.pri:hover{filter:brightness(1.1);color:#fff}
+input,textarea,select{font:12px/1.5 ui-monospace,monospace;width:100%;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg)}
+textarea{min-height:120px;resize:vertical}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.card{border:1px solid var(--line);border-radius:9px;padding:10px;margin:8px 0;background:var(--soft)}
+.card b{font-size:12px}.tag{display:inline-block;padding:1px 7px;border-radius:9px;background:var(--bg);border:1px solid var(--line);font-size:10px;color:var(--mut);margin-right:4px}
+pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px;font:11px/1.5 ui-monospace,monospace;max-height:260px;overflow:auto}
+.ok{color:#1a7f37}.bad{color:#cf222e}.mono{font-family:ui-monospace,monospace;font-size:11px}
+.hint{border-left:3px solid var(--pur);padding:6px 10px;background:var(--soft);color:var(--mut);font-size:11px;margin:10px 0}
+</style></head>
+<body>
+<h1>🐙 GitHub 仪表盘</h1>
+
+<p>旧「仓库 Hash 监控」并进来了。所有请求由宿主带着令牌代发，扩展碰不到 token。</p>
+<div class="row"><button class="pri" id="bRef">↻ 刷新</button><label style="font-size:12px"><input type="checkbox" id="auto" checked style="width:auto"> 每 60 秒自动刷新</label></div>
+<div class="card" id="stat"><b>载入中…</b></div>
+<h2>仓库 / 最新提交</h2><div id="list" class="mono">—</div>
+<div class="hint">状态栏、命令面板（Ctrl+Shift+P）和右键菜单都是这个扩展注册的，切视图不会丢。</div>
+
+<script>
+function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+var timer=null;
+function refresh(){
+  document.getElementById('stat').innerHTML='<b>读取中…</b>';
+  return Promise.all([
+    GD.net.github({path:'/user'}),
+    GD.net.github({path:'/rate_limit'}),
+    GD.net.github({path:'/user/repos?per_page=20&sort=updated'})
+  ]).then(function(r){
+    var me=r[0], rl=(r[1]&&r[1].resources&&r[1].resources.core)||{}, repos=r[2]||[];
+    document.getElementById('stat').innerHTML='<b>'+e(me.login||'未知账号')+'</b> <span class="tag">'+repos.length+' 个仓库</span><br>'+
+      '<small>API 剩余 '+e(rl.remaining==null?'?':rl.remaining)+' / '+e(rl.limit==null?'?':rl.limit)+' · 公开仓库 '+e(me.public_repos==null?'?':me.public_repos)+'</small>';
+    GD.status.set('🐙 API '+e(rl.remaining==null?'?':rl.remaining)+'/'+e(rl.limit==null?'?':rl.limit));
+    return Promise.all(repos.slice(0,8).map(function(p){
+      return GD.net.github({path:'/repos/'+p.full_name+'/commits?per_page=1'})
+        .then(function(c){ return {name:p.full_name, sha:(c&&c[0]&&c[0].sha)||'—', msg:(c&&c[0]&&c[0].commit&&c[0].commit.message)||''}; })
+        .catch(function(){ return {name:p.full_name, sha:'无权限/无提交', msg:''}; });
+    }));
+  }).then(function(rows){
+    document.getElementById('list').innerHTML = rows.length ? rows.map(function(x){
+      return '<div class="card"><b>'+e(x.name)+'</b> <span class="tag mono">'+e(String(x.sha).slice(0,10))+'</span>'+
+        '<button data-sha="'+e(x.sha)+'" style="padding:2px 7px;font-size:10px">复制 SHA</button><br><small>'+e(String(x.msg).split('\n')[0])+'</small></div>';
+    }).join('') : '没有仓库';
+    document.getElementById('list').querySelectorAll('[data-sha]').forEach(function(b){
+      b.onclick=function(){ GD.clipboard.write(b.dataset.sha).then(function(){ GD.ui.toast('SHA 已复制','success'); }); };
+    });
+  }).catch(function(err){ document.getElementById('stat').innerHTML='<b class="bad">'+e(err.message)+'</b>'; });
+}
+GD.ready.then(function(){
+  GD.sidebar.setTitle('🐙 GitHub 仪表盘');
+  GD.commands.register('dashboard.refresh','仪表盘：刷新',refresh);
+  GD.menus.contribute('file',[{command:'dashboard.refresh',label:'刷新 GitHub 仪表盘',icon:'↻'}]);
+  GD.events.on('files.changed',function(){ if(document.getElementById('auto').checked) refresh(); });
+  refresh();
+  timer=setInterval(function(){ if(document.getElementById('auto').checked) refresh(); },60000);
+});
+document.getElementById('bRef').onclick=refresh;
+
+</script></body></html>

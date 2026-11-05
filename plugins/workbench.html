@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🧰 万能工作台</title><style>
+:root{--bg:#fff;--fg:#1f2328;--mut:#656d76;--line:#d0d7de;--soft:#f6f8fa;--acc:#0969da;--pur:#8250df}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#c9d1d9;--mut:#8b949e;--line:#30363d;--soft:#161b22;--acc:#58a6ff;--pur:#bc8cff}}
+*{box-sizing:border-box}body{margin:0;padding:14px;font:13px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--fg)}
+h1{font-size:16px;margin:0 0 4px}h2{font-size:13px;margin:16px 0 8px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+p{color:var(--mut);margin:6px 0 10px}small{color:var(--mut);font-size:11px}
+button{font:12px system-ui;padding:7px 11px;border:1px solid var(--line);border-radius:7px;background:var(--soft);color:var(--fg);cursor:pointer;margin:3px 4px 3px 0}
+button:hover{border-color:var(--acc);color:var(--acc)}button.pri{background:var(--acc);border-color:var(--acc);color:#fff}button.pri:hover{filter:brightness(1.1);color:#fff}
+input,textarea,select{font:12px/1.5 ui-monospace,monospace;width:100%;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg)}
+textarea{min-height:120px;resize:vertical}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.card{border:1px solid var(--line);border-radius:9px;padding:10px;margin:8px 0;background:var(--soft)}
+.card b{font-size:12px}.tag{display:inline-block;padding:1px 7px;border-radius:9px;background:var(--bg);border:1px solid var(--line);font-size:10px;color:var(--mut);margin-right:4px}
+pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px;font:11px/1.5 ui-monospace,monospace;max-height:260px;overflow:auto}
+.ok{color:#1a7f37}.bad{color:#cf222e}.mono{font-family:ui-monospace,monospace;font-size:11px}
+.hint{border-left:3px solid var(--pur);padding:6px 10px;background:var(--soft);color:var(--mut);font-size:11px;margin:10px 0}
+</style></head>
+<body>
+<h1>🧰 万能工作台</h1>
+
+<p>六个旧插件已合并到这里。图片、音频、PDF、Markdown 等由宿主原生预览，不再重复造轮子。</p>
+<div class="card" id="sel"><b>未选中文件</b><br><small>在网盘里点一个文件，这里会自动跟上</small></div>
+<div class="row">
+  <button class="pri" id="bOpen">👁 用宿主预览打开</button>
+  <button id="bRead">📖 读取内容</button>
+  <button id="bWin">▢ 在窗口里编辑</button>
+  <button id="bCopy">⧉ 复制路径</button>
+</div>
+<h2>快速编辑</h2>
+<textarea id="ed" placeholder="读取或粘贴内容，改完保存回 Drive"></textarea>
+<div class="row"><button class="pri" id="bSave">💾 保存回原路径</button><span id="msg" class="mono"></span></div>
+<div class="hint">侧边栏是常驻的：切到「最近 / 收藏 / 后台进程」它都不会重载，编辑到一半的内容不会丢。</div>
+
+<script>
+function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+var cur = null, ed = document.getElementById('ed');
+function show(f){
+  cur = f;
+  document.getElementById('sel').innerHTML = f
+    ? '<b>'+e(f.name)+'</b> <span class="tag">'+(f.isFolder?'文件夹':'文件')+'</span><br><small class="mono">'+e(f.path)+'</small>'
+    : '<b>未选中文件</b><br><small>在网盘里点一个文件，这里会自动跟上</small>';
+  GD.status.set(f ? '🧰 '+f.name : '🧰 工作台');
+}
+GD.ready.then(function(){
+  GD.sidebar.setTitle('🧰 万能工作台');
+  GD.selection.get().then(function(a){ if(a.length) show(a[a.length-1]); });
+  GD.events.on('selection.change', function(p){ show((p.files||[]).slice(-1)[0] || null); });
+  GD.commands.register('workbench.openSelected','工作台：打开选中文件',function(){
+    return GD.selection.get().then(function(a){ if(!a.length) throw new Error('没有选中文件'); return GD.files.open(a[a.length-1].path); });
+  });
+  GD.commands.register('workbench.quickEdit','工作台：打开编辑窗口',function(){ return openEditor(); });
+  GD.menus.contribute('file',[
+    {command:'workbench.openSelected',label:'用工作台预览',icon:'👁'},
+    {command:'workbench.quickEdit',label:'用工作台编辑',icon:'✎',when:'file'}
+  ]);
+  GD.status.set('🧰 工作台就绪');
+});
+function msg(t,bad){ var m=document.getElementById('msg'); m.textContent=t; m.className='mono '+(bad?'bad':'ok'); }
+function need(){ if(!cur) throw new Error('请先选中一个文件'); return cur; }
+function openEditor(){
+  var html = '<!DOCTYPE html><html lang="zh-CN"><meta charset="utf-8"><style>body{font:13px system-ui;padding:14px}textarea{width:100%;height:60vh;font:12px monospace}button{padding:8px 14px;margin-top:8px}</style><h3>子窗口编辑器</h3><textarea id="t"></textarea><br><button id="s">保存</button><span id="m"></span><script>' +
+    'var GD=window.GD;GD.ready.then(function(){GD.files.read('+JSON.stringify(cur?cur.path:'')+').then(function(r){document.getElementById("t").value=r.content;});' +
+    'document.getElementById("s").onclick=function(){GD.files.write('+JSON.stringify(cur?cur.path:'')+',document.getElementById("t").value).then(function(){document.getElementById("m").textContent="已保存";}).catch(function(e){document.getElementById("m").textContent=e.message;});};});' +
+    '<\/script></html>';
+  return GD.window.open({title:'✎ '+((cur&&cur.name)||'编辑器'),html:html});
+}
+document.getElementById('bOpen').onclick=function(){ try{ GD.files.open(need().path).then(function(){msg('已交给宿主预览');}).catch(function(x){msg(x.message,1);}); }catch(x){msg(x.message,1);} };
+document.getElementById('bRead').onclick=function(){ try{ GD.files.read(need().path).then(function(r){ed.value=r.content;msg('已读取 '+r.size+' 字节');}).catch(function(x){msg(x.message,1);}); }catch(x){msg(x.message,1);} };
+document.getElementById('bWin').onclick=function(){ try{ need(); openEditor().then(function(){msg('子窗口已打开');}).catch(function(x){msg(x.message,1);}); }catch(x){msg(x.message,1);} };
+document.getElementById('bCopy').onclick=function(){ try{ GD.clipboard.write(need().path).then(function(){msg('路径已复制');}); }catch(x){msg(x.message,1);} };
+document.getElementById('bSave').onclick=function(){ try{ GD.files.write(need().path,ed.value).then(function(){msg('已保存到 Drive');}).catch(function(x){msg(x.message,1);}); }catch(x){msg(x.message,1);} };
+
+</script></body></html>

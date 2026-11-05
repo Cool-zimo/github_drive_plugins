@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🌐 HTTP 实验室</title><style>
+:root{--bg:#fff;--fg:#1f2328;--mut:#656d76;--line:#d0d7de;--soft:#f6f8fa;--acc:#0969da;--pur:#8250df}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#c9d1d9;--mut:#8b949e;--line:#30363d;--soft:#161b22;--acc:#58a6ff;--pur:#bc8cff}}
+*{box-sizing:border-box}body{margin:0;padding:14px;font:13px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--fg)}
+h1{font-size:16px;margin:0 0 4px}h2{font-size:13px;margin:16px 0 8px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+p{color:var(--mut);margin:6px 0 10px}small{color:var(--mut);font-size:11px}
+button{font:12px system-ui;padding:7px 11px;border:1px solid var(--line);border-radius:7px;background:var(--soft);color:var(--fg);cursor:pointer;margin:3px 4px 3px 0}
+button:hover{border-color:var(--acc);color:var(--acc)}button.pri{background:var(--acc);border-color:var(--acc);color:#fff}button.pri:hover{filter:brightness(1.1);color:#fff}
+input,textarea,select{font:12px/1.5 ui-monospace,monospace;width:100%;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg)}
+textarea{min-height:120px;resize:vertical}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.card{border:1px solid var(--line);border-radius:9px;padding:10px;margin:8px 0;background:var(--soft)}
+.card b{font-size:12px}.tag{display:inline-block;padding:1px 7px;border-radius:9px;background:var(--bg);border:1px solid var(--line);font-size:10px;color:var(--mut);margin-right:4px}
+pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px;font:11px/1.5 ui-monospace,monospace;max-height:260px;overflow:auto}
+.ok{color:#1a7f37}.bad{color:#cf222e}.mono{font-family:ui-monospace,monospace;font-size:11px}
+.hint{border-left:3px solid var(--pur);padding:6px 10px;background:var(--soft);color:var(--mut);font-size:11px;margin:10px 0}
+</style></head>
+<body>
+<h1>🌐 HTTP 实验室</h1>
+
+<p>扩展可以发完整的 HTTP 请求。第一次访问新域名时宿主会弹授权框，扩展拿不到你的令牌。</p>
+<div class="row"><select id="m" style="width:110px"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option><option>HEAD</option></select>
+<input id="u" value="https://api.github.com/rate_limit" style="flex:1;min-width:180px"></div>
+<h2>请求头（JSON）</h2><textarea id="h" style="min-height:52px">{}</textarea>
+<h2>请求体</h2><textarea id="b" style="min-height:64px"></textarea>
+<div class="row"><select id="proxy" style="width:170px"><option value="">直连（受 CORS 限制）</option><option value="backend">经本地后端代理</option></select>
+<button class="pri" id="go">➤ 发送请求</button><button id="pop">⇱ 结果弹出成标签</button></div>
+<div id="out"></div>
+<h2>已授权域名</h2><div id="grants" class="mono">—</div>
+<div class="hint">直连遇到 CORS 报错时，切到「本地后端代理」即可绕过（后端需支持 POST /fetch）。</div>
+
+<script>
+function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+var last='';
+function showGrants(){
+  GD.net.grants().then(function(g){
+    document.getElementById('grants').innerHTML = g.length ? g.map(function(o){
+      return '<div class="card">'+e(o)+' <button data-o="'+e(o)+'" style="padding:2px 7px;font-size:10px">撤销</button></div>';
+    }).join('') : '<small>还没有授权任何域名</small>';
+    document.getElementById('grants').querySelectorAll('[data-o]').forEach(function(b){
+      b.onclick=function(){ GD.net.revoke(b.dataset.o).then(showGrants); };
+    });
+  });
+}
+function render(r){
+  last='<h2>响应</h2><div class="card"><b class="'+(r.ok?'ok':'bad')+'">'+e(r.status||'?')+' '+e(r.statusText||'')+'</b>'+
+    '<span class="tag">'+e(r.size||0)+' B</span><span class="tag">'+e(r.contentType||'')+'</span></div>'+
+    '<pre>'+e(JSON.stringify(r.headers||{},null,2))+'</pre><pre>'+e(String(r.body||'').slice(0,20000))+'</pre>';
+  document.getElementById('out').innerHTML=last;
+}
+GD.ready.then(function(){
+  GD.sidebar.setTitle('🌐 HTTP 实验室'); showGrants();
+  GD.commands.register('httplab.send','HTTP 实验室：发送当前请求',function(){ return document.getElementById('go').click(); });
+  GD.status.set('🌐 等待请求');
+});
+document.getElementById('go').onclick=function(){
+  var body=document.getElementById('b').value, headers;
+  try{ headers=JSON.parse(document.getElementById('h').value||'{}'); }catch(err){ document.getElementById('out').innerHTML='<p class="bad">请求头不是合法 JSON</p>'; return; }
+  var p={url:document.getElementById('u').value.trim(),method:document.getElementById('m').value,headers:headers,timeout:15000};
+  if(body && p.method!=='GET' && p.method!=='HEAD') p.body=body;
+  if(document.getElementById('proxy').value) p.proxy=document.getElementById('proxy').value;
+  document.getElementById('out').innerHTML='<p>请求中…（若是新域名，请看宿主页弹出的授权框）</p>';
+  var t=Date.now();
+  GD.net.fetch(p).then(function(r){ render(r); GD.status.set('🌐 '+r.status+' · '+(Date.now()-t)+'ms'); showGrants(); })
+    .catch(function(err){ document.getElementById('out').innerHTML='<p class="bad">'+e(err.message)+'</p>'; GD.status.set('🌐 请求失败'); });
+};
+document.getElementById('pop').onclick=function(){
+  if(!last){ GD.ui.toast('先发一个请求','info'); return; }
+  var html='<!DOCTYPE html><html><meta charset="utf-8"><style>body{font:13px system-ui;background:#0d1117;color:#c9d1d9;padding:20px}pre{white-space:pre-wrap;word-break:break-all}</style><h2>HTTP 实验室 · 独立标签</h2>'+last+'</html>';
+  GD.window.popout({title:'🌐 响应',html:html}).then(function(){ GD.ui.toast('已弹出独立标签','success'); })
+    .catch(function(e){ GD.ui.toast(e.message,'error'); });
+};
+
+</script></body></html>

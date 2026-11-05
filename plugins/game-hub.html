@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🎮 游戏中心</title><style>
+:root{--bg:#fff;--fg:#1f2328;--mut:#656d76;--line:#d0d7de;--soft:#f6f8fa;--acc:#0969da;--pur:#8250df}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#c9d1d9;--mut:#8b949e;--line:#30363d;--soft:#161b22;--acc:#58a6ff;--pur:#bc8cff}}
+*{box-sizing:border-box}body{margin:0;padding:14px;font:13px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--fg)}
+h1{font-size:16px;margin:0 0 4px}h2{font-size:13px;margin:16px 0 8px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+p{color:var(--mut);margin:6px 0 10px}small{color:var(--mut);font-size:11px}
+button{font:12px system-ui;padding:7px 11px;border:1px solid var(--line);border-radius:7px;background:var(--soft);color:var(--fg);cursor:pointer;margin:3px 4px 3px 0}
+button:hover{border-color:var(--acc);color:var(--acc)}button.pri{background:var(--acc);border-color:var(--acc);color:#fff}button.pri:hover{filter:brightness(1.1);color:#fff}
+input,textarea,select{font:12px/1.5 ui-monospace,monospace;width:100%;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg)}
+textarea{min-height:120px;resize:vertical}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.card{border:1px solid var(--line);border-radius:9px;padding:10px;margin:8px 0;background:var(--soft)}
+.card b{font-size:12px}.tag{display:inline-block;padding:1px 7px;border-radius:9px;background:var(--bg);border:1px solid var(--line);font-size:10px;color:var(--mut);margin-right:4px}
+pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px;font:11px/1.5 ui-monospace,monospace;max-height:260px;overflow:auto}
+.ok{color:#1a7f37}.bad{color:#cf222e}.mono{font-family:ui-monospace,monospace;font-size:11px}
+.hint{border-left:3px solid var(--pur);padding:6px 10px;background:var(--soft);color:var(--mut);font-size:11px;margin:10px 0}
+</style></head>
+<body>
+<h1>🎮 游戏中心</h1>
+
+<p>原来的「贪吃蛇」和「修仙模拟器」合并到这里。点开就是独立窗口，不占侧边栏。</p>
+<div class="card"><b>🐍 贪吃蛇</b><br><small>经典小游戏，最高分存在宿主分配给本扩展的存储里</small><br>
+<button class="pri" data-game="snake">▶ 开始</button></div>
+<div class="card"><b>🌿 修仙模拟器</b><br><small>外部站点，在扩展窗口里直接打开</small><br>
+<button class="pri" data-game="xiudao">▶ 开始</button></div>
+<div class="hint">外部 URL 扩展不需要注入 SDK 也能跑；需要宿主能力时，页面里引一次 ext-sdk.js 即可。</div>
+
+<script>
+
+GD.ready.then(function(){ GD.status.set('🎮 2 个游戏'); });
+var GAMES={
+  snake:{title:'🐍 贪吃蛇',url:'https://cdn.jsdelivr.net/gh/Cool-zimo/github_drive_plugins@main/games/snake.html'},
+  xiudao:{title:'🌿 修仙模拟器',url:'https://cool-zimo.github.io/xiudao/'}
+};
+document.querySelectorAll('[data-game]').forEach(function(b){
+  b.onclick=function(){
+    var g=GAMES[b.dataset.game];
+    GD.window.open({title:g.title,icon:'🎮',url:g.url}).then(function(){GD.ui.toast('已打开 '+g.title,'success');})
+      .catch(function(e){GD.ui.toast(e.message,'error');});
+  };
+});
+
+</script></body></html>

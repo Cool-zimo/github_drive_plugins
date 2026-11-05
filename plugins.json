@@ -1,95 +1,300 @@
 {
-  "version": "1.0",
+  "version": "2.0",
+  "api": 2,
+  "updatedAt": "2026-11-04T14:36:02.206896Z",
+  "note": "v2 扩展宿主：常驻侧边栏 / 多窗口 / 命令 / 菜单 / 完整网络请求。旧版插件仍可运行。",
   "plugins": [
     {
-      "id": "text-editor",
-      "name": "📝 文本编辑器",
-      "description": "在线编辑文本文件，支持打开、编辑、保存到 GitHub Drive",
+      "id": "workbench",
+      "name": "🧰 万能工作台",
+      "description": "合并文本/代码编辑器、图片查看、音乐播放、Markdown 预览、JSON 格式化：选中文件即预览、编辑、保存，直接用宿主原生能力",
       "author": "GitHub Drive",
-      "version": "1.0.0",
-      "icon": "📝",
-      "file": "plugins/text-editor.html",
-      "type": "plugin"
+      "version": "2.0.0",
+      "icon": "🧰",
+      "type": "plugin",
+      "file": "plugins/workbench.html",
+      "api": 2,
+      "contributes": {
+        "views": {
+          "sidebar": true
+        },
+        "commands": [
+          {
+            "id": "workbench.openSelected",
+            "title": "工作台：打开选中文件"
+          },
+          {
+            "id": "workbench.quickEdit",
+            "title": "工作台：打开编辑窗口"
+          }
+        ],
+        "menus": {
+          "file": [
+            {
+              "command": "workbench.openSelected",
+              "label": "用工作台预览"
+            }
+          ]
+        }
+      },
+      "permissions": [
+        "files.list",
+        "files.read",
+        "files.write",
+        "files.open",
+        "files.stat",
+        "ui.window",
+        "ui.sidebarTitle",
+        "ui.commandRegister",
+        "ui.commandExecute",
+        "ui.commandList",
+        "ui.menuContribute",
+        "ui.status",
+        "ui.toast",
+        "selection.get",
+        "clipboard.write",
+        "storage.get",
+        "storage.set",
+        "host.info"
+      ]
+    },
+    {
+      "id": "github-dashboard",
+      "name": "🐙 GitHub 仪表盘",
+      "description": "合并仓库 Hash 监控：账号、仓库、最新 commit、API 限流一屏看完，支持状态栏与自动刷新",
+      "author": "GitHub Drive",
+      "version": "2.0.0",
+      "icon": "🐙",
+      "type": "plugin",
+      "file": "plugins/github-dashboard.html",
+      "api": 2,
+      "contributes": {
+        "views": {
+          "sidebar": true
+        },
+        "commands": [
+          {
+            "id": "dashboard.refresh",
+            "title": "仪表盘：刷新"
+          }
+        ],
+        "menus": {
+          "file": [
+            {
+              "command": "dashboard.refresh",
+              "label": "刷新 GitHub 仪表盘"
+            }
+          ]
+        }
+      },
+      "permissions": [
+        "net.github",
+        "net.grants",
+        "ui.sidebarTitle",
+        "ui.status",
+        "ui.toast",
+        "ui.commandRegister",
+        "ui.commandList",
+        "ui.menuContribute",
+        "clipboard.write",
+        "host.info",
+        "theme.get"
+      ]
+    },
+    {
+      "id": "http-lab",
+      "name": "🌐 HTTP 实验室",
+      "description": "完整 HTTP 客户端：方法 / 头 / 请求体 / 域名授权 / 后端代理 / 响应查看，还能把结果弹成独立标签",
+      "author": "GitHub Drive",
+      "version": "2.0.0",
+      "icon": "🌐",
+      "type": "plugin",
+      "file": "plugins/http-lab.html",
+      "api": 2,
+      "contributes": {
+        "views": {
+          "window": true
+        },
+        "commands": [
+          {
+            "id": "httplab.send",
+            "title": "HTTP 实验室：发送当前请求"
+          }
+        ]
+      },
+      "permissions": [
+        "net.fetch",
+        "net.grants",
+        "net.revoke",
+        "ui.window",
+        "ui.popout",
+        "ui.sidebarTitle",
+        "ui.status",
+        "ui.toast",
+        "ui.commandRegister",
+        "ui.commandList",
+        "host.info"
+      ]
+    },
+    {
+      "id": "quick-notes",
+      "name": "🗒 随手记",
+      "description": "常驻侧边栏的记事本：跟随选中文件、自动保存、同步到 Drive 隐藏目录、插入路径、复制全文",
+      "author": "GitHub Drive",
+      "version": "2.0.0",
+      "icon": "🗒",
+      "type": "plugin",
+      "file": "plugins/quick-notes.html",
+      "api": 2,
+      "contributes": {
+        "views": {
+          "sidebar": true
+        },
+        "commands": [
+          {
+            "id": "notes.insertPath",
+            "title": "随手记：插入选中文件路径"
+          }
+        ],
+        "menus": {
+          "file": [
+            {
+              "command": "notes.insertPath",
+              "label": "路径插入随手记"
+            }
+          ]
+        }
+      },
+      "permissions": [
+        "files.read",
+        "files.write",
+        "selection.get",
+        "clipboard.write",
+        "storage.get",
+        "storage.set",
+        "storage.keys",
+        "storage.sync",
+        "storage.restore",
+        "ui.sidebarTitle",
+        "ui.status",
+        "ui.toast",
+        "ui.commandRegister",
+        "ui.commandList",
+        "ui.menuContribute",
+        "host.info"
+      ]
+    },
+    {
+      "id": "command-center",
+      "name": "⌘ 命令中心",
+      "description": "演示命令注册、命令面板、右键菜单注入、多窗口与独立标签；扩展能往宿主里长进去",
+      "author": "GitHub Drive",
+      "version": "2.0.0",
+      "icon": "⌘",
+      "type": "plugin",
+      "file": "plugins/command-center.html",
+      "api": 2,
+      "contributes": {
+        "views": {
+          "window": true
+        },
+        "commands": [
+          {
+            "id": "cc.info",
+            "title": "命令中心：查看宿主信息"
+          },
+          {
+            "id": "cc.window",
+            "title": "命令中心：开一个子窗口"
+          }
+        ],
+        "menus": {
+          "file": [
+            {
+              "command": "cc.menuFile",
+              "label": "显示文件信息"
+            }
+          ]
+        }
+      },
+      "permissions": [
+        "files.list",
+        "files.stat",
+        "files.read",
+        "files.write",
+        "files.delete",
+        "files.open",
+        "files.upload",
+        "net.fetch",
+        "net.github",
+        "net.grants",
+        "net.revoke",
+        "ui.window",
+        "ui.close",
+        "ui.setTitle",
+        "ui.fullscreen",
+        "ui.popout",
+        "ui.sidebarTitle",
+        "ui.sidebarBadge",
+        "ui.sidebarShow",
+        "ui.sidebarHide",
+        "ui.commandRegister",
+        "ui.commandUnregister",
+        "ui.commandExecute",
+        "ui.commandList",
+        "ui.menuContribute",
+        "ui.status",
+        "ui.toast",
+        "ui.notify",
+        "ui.progress",
+        "ui.navigate",
+        "storage.get",
+        "storage.set",
+        "storage.remove",
+        "storage.keys",
+        "storage.sync",
+        "storage.restore",
+        "selection.get",
+        "clipboard.read",
+        "clipboard.write",
+        "theme.get",
+        "i18n.t",
+        "i18n.lang",
+        "host.info"
+      ]
+    },
+    {
+      "id": "game-hub",
+      "name": "🎮 游戏中心",
+      "description": "合并贪吃蛇与修仙模拟器，游戏在独立窗口里打开，不占侧边栏",
+      "author": "GitHub Drive",
+      "version": "2.0.0",
+      "icon": "🎮",
+      "type": "game",
+      "file": "plugins/game-hub.html",
+      "api": 2,
+      "contributes": {
+        "views": {
+          "window": true
+        }
+      },
+      "permissions": [
+        "ui.window",
+        "ui.status",
+        "ui.toast",
+        "host.info"
+      ]
     },
     {
       "id": "bilibili-downloader",
       "name": "📺 B站视频下载器",
-      "description": "输入B站视频链接，下载视频到 GitHub Drive（需配合后端代理）",
+      "description": "输入B站视频链接下载到 GitHub Drive（需配合本地后端，直连受 CORS 限制）",
       "author": "GitHub Drive",
       "version": "0.1.0",
       "icon": "📺",
+      "type": "plugin",
       "file": "plugins/bilibili-downloader.html",
-      "type": "plugin"
-    },
-    {
-      "id": "image-viewer",
-      "name": "🖼️ 图片查看器",
-      "description": "浏览和预览 Drive 中的图片文件，支持缩放和旋转",
-      "author": "GitHub Drive",
-      "version": "1.0.0",
-      "icon": "🖼️",
-      "file": "plugins/image-viewer.html",
-      "type": "plugin"
-    },
-    {
-      "id": "snake",
-      "name": "🐍 贪吃蛇",
-      "description": "经典贪吃蛇游戏，最高分自动保存到 GitHub Drive",
-      "author": "GitHub Drive",
-      "version": "1.0.0",
-      "icon": "🐍",
-      "type": "game",
-      "file": "games/snake.html"
-    },
-    {
-      "id": "repo-hash-monitor",
-      "name": "🔍 仓库Hash监控",
-      "description": "监控 GitHub 仓库的最新 commit hash，支持多仓库、自动刷新、一键复制",
-      "author": "GitHub Drive",
-      "version": "1.0.0",
-      "icon": "🔍",
-      "file": "plugins/repo-hash-monitor.html",
-      "type": "plugin"
-    },
-    {
-      "id": "markdown-preview",
-      "name": "📝 Markdown 预览器",
-      "description": "实时预览 Markdown 文件，支持编辑和保存到 GitHub Drive",
-      "author": "GitHub Drive",
-      "version": "1.0.0",
-      "icon": "📝",
-      "file": "plugins/markdown-preview.html",
-      "type": "plugin"
-    },
-    {
-      "id": "json-formatter",
-      "name": "🔧 JSON 格式化工具",
-      "description": "格式化、压缩、验证 JSON 文件，支持从 Drive 打开和保存",
-      "author": "GitHub Drive",
-      "version": "1.0.0",
-      "icon": "🔧",
-      "file": "plugins/json-formatter.html",
-      "type": "plugin"
-    },
-    {
-      "id": "music-player",
-      "name": "🎵 音乐播放器",
-      "description": "播放 Drive 中的音频文件，支持播放列表、上一首/下一首、进度条",
-      "author": "GitHub Drive",
-      "version": "1.0.0",
-      "icon": "🎵",
-      "file": "plugins/music-player.html",
-      "type": "plugin"
-    },
-    {
-      "id": "code-editor",
-      "name": "💻 代码编辑器",
-      "description": "深色主题代码编辑器，支持行号、多语言、Tab 缩进、JSON 格式化",
-      "author": "GitHub Drive",
-      "version": "1.0.0",
-      "icon": "💻",
-      "file": "plugins/code-editor.html",
-      "type": "plugin"
+      "requiresBackend": true
     },
     {
       "id": "math-practice",
@@ -98,20 +303,8 @@
       "author": "GitHub Drive",
       "version": "1.0.0",
       "icon": "🧮",
-      "file": "plugins/math-practice.html",
-      "type": "plugin"
-    },
-    {
-      "id": "xiudao",
-      "name": "🌿 修仙模拟器",
-      "description": "纯前端文字修仙游戏，支持云存档同步到 GitHub Drive，多职业多阵营多天赋",
-      "author": "Cool-zimo",
-      "version": "1.0.0",
-      "icon": "🌿",
       "type": "game",
-      "externalUrl": "https://cool-zimo.github.io/xiudao/",
-      "fullscreen": true
+      "file": "plugins/math-practice.html"
     }
-  ],
-  "updatedAt": "2026-09-12T06:43:53.638070Z"
+  ]
 }

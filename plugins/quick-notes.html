@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🗒 随手记</title><style>
+:root{--bg:#fff;--fg:#1f2328;--mut:#656d76;--line:#d0d7de;--soft:#f6f8fa;--acc:#0969da;--pur:#8250df}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#c9d1d9;--mut:#8b949e;--line:#30363d;--soft:#161b22;--acc:#58a6ff;--pur:#bc8cff}}
+*{box-sizing:border-box}body{margin:0;padding:14px;font:13px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--fg)}
+h1{font-size:16px;margin:0 0 4px}h2{font-size:13px;margin:16px 0 8px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+p{color:var(--mut);margin:6px 0 10px}small{color:var(--mut);font-size:11px}
+button{font:12px system-ui;padding:7px 11px;border:1px solid var(--line);border-radius:7px;background:var(--soft);color:var(--fg);cursor:pointer;margin:3px 4px 3px 0}
+button:hover{border-color:var(--acc);color:var(--acc)}button.pri{background:var(--acc);border-color:var(--acc);color:#fff}button.pri:hover{filter:brightness(1.1);color:#fff}
+input,textarea,select{font:12px/1.5 ui-monospace,monospace;width:100%;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg)}
+textarea{min-height:120px;resize:vertical}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.card{border:1px solid var(--line);border-radius:9px;padding:10px;margin:8px 0;background:var(--soft)}
+.card b{font-size:12px}.tag{display:inline-block;padding:1px 7px;border-radius:9px;background:var(--bg);border:1px solid var(--line);font-size:10px;color:var(--mut);margin-right:4px}
+pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px;font:11px/1.5 ui-monospace,monospace;max-height:260px;overflow:auto}
+.ok{color:#1a7f37}.bad{color:#cf222e}.mono{font-family:ui-monospace,monospace;font-size:11px}
+.hint{border-left:3px solid var(--pur);padding:6px 10px;background:var(--soft);color:var(--mut);font-size:11px;margin:10px 0}
+</style></head>
+<body>
+<h1>🗒 随手记</h1>
+
+<p>侧边栏常驻的记事本。本地自动存，也可以同步到 Drive 的隐藏目录，换设备能取回。</p>
+<textarea id="t" placeholder="想到什么就写什么…"></textarea>
+<div class="row"><button class="pri" id="sync">☁ 同步到 Drive</button><button id="restore">⇩ 从 Drive 恢复</button>
+<button id="ins">＋ 插入选中文件</button><button id="copy">⧉ 复制全文</button></div>
+<div class="card" id="cur"><b>当前文件：</b><small>未选中</small></div>
+<div id="msg" class="mono"></div>
+<div class="hint">插入路径、复制到剪贴板、事件订阅、云同步，全部走宿主声明式能力。</div>
+
+<script>
+function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+var t=document.getElementById('t'), saveT=null;
+function msg(s,bad){var m=document.getElementById('msg');m.textContent=s;m.className='mono '+(bad?'bad':'ok');}
+GD.ready.then(function(){
+  GD.sidebar.setTitle('🗒 随手记');
+  GD.storage.get('text','').then(function(v){ t.value=v||''; });
+  GD.events.on('selection.change',function(p){
+    var f=(p.files||[]).slice(-1)[0];
+    document.getElementById('cur').innerHTML='<b>当前文件：</b><small class="mono">'+e(f?f.path:'未选中')+'</small>';
+  });
+  GD.selection.get().then(function(a){var f=a.slice(-1)[0];if(f)document.getElementById('cur').innerHTML='<b>当前文件：</b><small class="mono">'+e(f.path)+'</small>';});
+  GD.commands.register('notes.insertPath','随手记：插入选中文件路径',function(){ return insert(); });
+  GD.menus.contribute('file',[{command:'notes.insertPath',label:'路径插入随手记',icon:'＋'}]);
+  GD.status.set('🗒 0 字');
+});
+t.addEventListener('input',function(){
+  clearTimeout(saveT);
+  saveT=setTimeout(function(){ GD.storage.set('text',t.value); GD.status.set('🗒 '+t.value.length+' 字'); },500);
+});
+function insert(){
+  return GD.selection.get().then(function(a){ var f=a.slice(-1)[0]; if(!f) throw new Error('没有选中文件');
+    t.value += (t.value?'\n':'')+f.path; GD.storage.set('text',t.value); GD.ui.toast('已插入路径','success'); return true; });
+}
+document.getElementById('ins').onclick=function(){insert().catch(function(e){msg(e.message,1);});};
+document.getElementById('sync').onclick=function(){GD.storage.sync().then(function(r){msg('已同步 '+r.keys+' 个键到 Drive');}).catch(function(e){msg(e.message,1);});};
+document.getElementById('restore').onclick=function(){GD.storage.restore().then(function(){return GD.storage.get('text','');}).then(function(v){t.value=v||'';msg('已恢复');}).catch(function(e){msg(e.message,1);});};
+document.getElementById('copy').onclick=function(){GD.clipboard.write(t.value).then(function(){msg('已复制');}).catch(function(e){msg(e.message,1);});};
+
+</script></body></html>
