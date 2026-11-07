@@ -30,7 +30,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px so
 <h2>快速编辑</h2>
 <textarea id="ed" placeholder="读取或粘贴内容，改完保存回 Drive"></textarea>
 <div class="row"><button class="pri" id="bSave">💾 保存回原路径</button><span id="msg" class="mono"></span></div>
-<div class="hint">侧边栏是常驻的：切到「最近 / 收藏 / 后台进程」它都不会重载，编辑到一半的内容不会丢。</div>
+<div class="hint">独立窗口里编辑：窗口不关就不重载，编辑到一半的内容不会丢；想收进侧边栏也可以。</div>
 
 <script>
 function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
